@@ -12,7 +12,9 @@ export interface NodeData {
   };
   icon?: JSX.Element;
   config?: Record<string, any>;
+  [key: string]: unknown; // Add index signature to satisfy Record<string, unknown>
 }
 
+// Define properly typed AINode and WorkflowEdge
 export type AINode = Node<NodeData>;
 export type WorkflowEdge = Edge;

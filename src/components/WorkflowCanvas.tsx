@@ -15,10 +15,11 @@ import {
   useReactFlow,
   NodeTypes,
   EdgeTypes,
+  Node,
 } from '@xyflow/react';
 import { useToast } from '@/components/ui/use-toast';
 import '@xyflow/react/dist/style.css';
-import { AINode, WorkflowEdge } from '../types/workflow';
+import { AINode, WorkflowEdge, NodeData } from '../types/workflow';
 
 import ServiceNode from './nodes/ServiceNode';
 import { getNodeIcon, getNodeColor } from '../utils/nodeUtils';
@@ -33,7 +34,7 @@ interface WorkflowCanvasProps {
   setApiKey: (key: string) => void;
 }
 
-const initialNodes: AINode[] = [
+const initialNodes: Node<NodeData>[] = [
   {
     id: 'input-1',
     type: 'serviceNode',
@@ -66,11 +67,11 @@ const initialEdges: WorkflowEdge[] = [];
 
 const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState<AINode>(initialNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<WorkflowEdge>(initialEdges);
   const { toast } = useToast();
-  const { project } = useReactFlow();
-  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
+  const reactFlowInstance = useReactFlow();
+  const [reactFlowInst, setReactFlowInst] = useState<any>(null);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -108,18 +109,18 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
       const type = event.dataTransfer.getData('application/reactflow');
       const nodeName = event.dataTransfer.getData('nodeName');
       
-      if (typeof type === 'undefined' || !type || !reactFlowBounds || !reactFlowInstance) {
+      if (typeof type === 'undefined' || !type || !reactFlowBounds || !reactFlowInst) {
         return;
       }
 
-      const position = reactFlowInstance.screenToFlowPosition({
+      const position = reactFlowInst.screenToFlowPosition({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
       });
 
       const color = getNodeColor(type);
       
-      const newNode = {
+      const newNode: Node<NodeData> = {
         id: `${type}-${Math.floor(Math.random() * 10000)}`,
         type: 'serviceNode',
         position,
@@ -141,11 +142,11 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
         description: `${nodeName} has been added to your workflow`
       });
     },
-    [reactFlowInstance, setNodes, toast]
+    [reactFlowInst, setNodes, toast]
   );
 
-  const onNodeClick = (_event: React.MouseEvent, node: AINode) => {
-    setSelectedNode(node);
+  const onNodeClick = (_event: React.MouseEvent, node: Node<NodeData>) => {
+    setSelectedNode(node as AINode);
   };
 
   return (
@@ -156,7 +157,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onInit={setReactFlowInstance}
+        onInit={setReactFlowInst}
         onDrop={onDrop}
         onDragOver={onDragOver}
         onNodeClick={onNodeClick}
@@ -168,7 +169,8 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
         <Background />
         <Controls />
         <MiniMap nodeColor={(n) => {
-          return (n as AINode).data.color || '#ddd';
+          const node = n as Node<NodeData>;
+          return node.data.color || '#ddd';
         }} />
         <Panel position="top-right">
           <div className="bg-white shadow-md rounded p-3 text-xs">
