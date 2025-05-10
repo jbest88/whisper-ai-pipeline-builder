@@ -4,6 +4,7 @@ import { FaBrain, FaImage, FaVolumeUp, FaDatabase, FaFileAlt } from 'react-icons
 import { BsChatText } from 'react-icons/bs';
 import { FiSend } from 'react-icons/fi';
 import { MdWebhook } from 'react-icons/md';
+import { Film } from 'lucide-react';
 
 export const getNodeIcon = (type: string) => {
   switch (type) {
@@ -18,6 +19,10 @@ export const getNodeIcon = (type: string) => {
     case 'stability':
     case 'midjourney':
       return <FaImage />;
+    case 'sora':
+    case 'runway':
+    case 'pika':
+      return <Film />;
     case 'blog':
     case 'social':
       return <FaFileAlt />;
@@ -48,6 +53,10 @@ export const getNodeColor = (type: string): string => {
     case 'stability':
     case 'midjourney':
       return '#be123c'; // rose-700
+    case 'sora':
+    case 'runway':
+    case 'pika':
+      return '#d97706'; // amber-600
     case 'blog':
     case 'social':
       return '#0891b2'; // cyan-600
@@ -81,6 +90,12 @@ export const getNodeDescription = (type: string): string => {
       return 'Create detailed AI images';
     case 'midjourney':
       return 'Create artistic images';
+    case 'sora':
+      return 'Generate realistic videos from text';
+    case 'runway':
+      return 'Create AI videos with Gen-2';
+    case 'pika':
+      return 'Convert text or images to video';
     case 'blog':
       return 'Generate blog post content';
     case 'social':

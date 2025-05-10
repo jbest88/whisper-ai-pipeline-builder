@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { FaRobot, FaBrain, FaImage, FaVolumeUp, FaPen, FaDatabase } from 'react-icons/fa';
 import { MdTranslate } from 'react-icons/md';
 import { GiCrystalBall } from 'react-icons/gi';
+import { Film } from 'lucide-react';
 
 type NodeCategory = {
   title: string;
@@ -45,6 +46,16 @@ const nodeCategories: NodeCategory[] = [
       { type: 'dalle', name: 'DALL-E 3', description: 'Generate images from text descriptions' },
       { type: 'stability', name: 'Stable Diffusion', description: 'Advanced text to image generation' },
       { type: 'midjourney', name: 'Midjourney', description: 'Artistic image creation from prompts' }
+    ]
+  },
+  {
+    title: 'Video Generation',
+    icon: <Film className="h-5 w-5" />,
+    color: 'bg-amber-100 text-amber-800 border-amber-300',
+    nodes: [
+      { type: 'sora', name: 'OpenAI Sora', description: 'Generate realistic videos from text descriptions' },
+      { type: 'runway', name: 'Runway Gen-2', description: 'Create high-quality videos from prompts' },
+      { type: 'pika', name: 'Pika Labs', description: 'Text to video and image to video generation' }
     ]
   },
   {

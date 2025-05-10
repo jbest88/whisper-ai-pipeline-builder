@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,27 @@ const NodeConfigPanel = ({ node, onClose, setApiKey }: NodeConfigPanelProps) => 
           style: 'vivid'
         });
         break;
+      case 'sora':
+        setNodeConfig({
+          duration: '10',
+          resolution: '1080p',
+          style: 'realistic'
+        });
+        break;
+      case 'runway':
+        setNodeConfig({
+          duration: '8',
+          frames: '24',
+          mode: 'text-to-video'
+        });
+        break;
+      case 'pika':
+        setNodeConfig({
+          duration: '5',
+          style: 'cinematic',
+          mode: 'text-to-video'
+        });
+        break;
       default:
         setNodeConfig({});
     }
@@ -77,6 +99,12 @@ const NodeConfigPanel = ({ node, onClose, setApiKey }: NodeConfigPanelProps) => 
         return 'ElevenLabs API Key';
       case 'stability':
         return 'Stability API Key';
+      case 'sora':
+        return 'OpenAI API Key';
+      case 'runway':
+        return 'Runway API Key';
+      case 'pika':
+        return 'Pika Labs API Key';
       default:
         return 'API Key';
     }
@@ -161,6 +189,134 @@ const NodeConfigPanel = ({ node, onClose, setApiKey }: NodeConfigPanelProps) => 
               >
                 <option value="vivid">Vivid</option>
                 <option value="natural">Natural</option>
+              </select>
+            </div>
+          </>
+        );
+        
+      case 'sora':
+        return (
+          <>
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="duration">Duration (seconds)</Label>
+              <Input 
+                id="duration"
+                type="number" 
+                min="5"
+                max="60"
+                value={nodeConfig.duration}
+                onChange={(e) => setNodeConfig({...nodeConfig, duration: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="resolution">Resolution</Label>
+              <select 
+                id="resolution"
+                className="w-full border rounded p-2 text-sm"
+                value={nodeConfig.resolution}
+                onChange={(e) => setNodeConfig({...nodeConfig, resolution: e.target.value})}
+              >
+                <option value="720p">720p</option>
+                <option value="1080p">1080p</option>
+                <option value="4k">4K</option>
+              </select>
+            </div>
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="style">Style</Label>
+              <select 
+                id="style"
+                className="w-full border rounded p-2 text-sm"
+                value={nodeConfig.style}
+                onChange={(e) => setNodeConfig({...nodeConfig, style: e.target.value})}
+              >
+                <option value="realistic">Realistic</option>
+                <option value="stylized">Stylized</option>
+                <option value="animated">Animated</option>
+              </select>
+            </div>
+          </>
+        );
+        
+      case 'runway':
+        return (
+          <>
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="duration">Duration (seconds)</Label>
+              <Input 
+                id="duration"
+                type="number" 
+                min="2"
+                max="16"
+                value={nodeConfig.duration}
+                onChange={(e) => setNodeConfig({...nodeConfig, duration: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="frames">Frames per second</Label>
+              <select 
+                id="frames"
+                className="w-full border rounded p-2 text-sm"
+                value={nodeConfig.frames}
+                onChange={(e) => setNodeConfig({...nodeConfig, frames: e.target.value})}
+              >
+                <option value="24">24 fps</option>
+                <option value="30">30 fps</option>
+                <option value="60">60 fps</option>
+              </select>
+            </div>
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="mode">Mode</Label>
+              <select 
+                id="mode"
+                className="w-full border rounded p-2 text-sm"
+                value={nodeConfig.mode}
+                onChange={(e) => setNodeConfig({...nodeConfig, mode: e.target.value})}
+              >
+                <option value="text-to-video">Text to Video</option>
+                <option value="image-to-video">Image to Video</option>
+              </select>
+            </div>
+          </>
+        );
+        
+      case 'pika':
+        return (
+          <>
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="duration">Duration (seconds)</Label>
+              <Input 
+                id="duration"
+                type="number" 
+                min="3"
+                max="10"
+                value={nodeConfig.duration}
+                onChange={(e) => setNodeConfig({...nodeConfig, duration: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="style">Style</Label>
+              <select 
+                id="style"
+                className="w-full border rounded p-2 text-sm"
+                value={nodeConfig.style}
+                onChange={(e) => setNodeConfig({...nodeConfig, style: e.target.value})}
+              >
+                <option value="cinematic">Cinematic</option>
+                <option value="animation">Animation</option>
+                <option value="artistic">Artistic</option>
+                <option value="vlog">Vlog</option>
+              </select>
+            </div>
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="mode">Mode</Label>
+              <select 
+                id="mode"
+                className="w-full border rounded p-2 text-sm"
+                value={nodeConfig.mode}
+                onChange={(e) => setNodeConfig({...nodeConfig, mode: e.target.value})}
+              >
+                <option value="text-to-video">Text to Video</option>
+                <option value="image-to-video">Image to Video</option>
               </select>
             </div>
           </>
