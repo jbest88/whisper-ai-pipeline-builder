@@ -1,11 +1,10 @@
-
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { FaRobot, FaBrain, FaImage, FaVolumeUp, FaPen, FaDatabase } from 'react-icons/fa';
 import { MdTranslate } from 'react-icons/md';
 import { GiCrystalBall } from 'react-icons/gi';
-import { Film } from 'lucide-react';
+import { Film, PanelLeftClose, PanelRightClose } from 'lucide-react';
 
 type NodeCategory = {
   title: string;
@@ -35,7 +34,8 @@ const nodeCategories: NodeCategory[] = [
     color: 'bg-blue-100 text-blue-800 border-blue-300',
     nodes: [
       { type: 'elevenlabs', name: 'ElevenLabs TTS', description: 'Text to realistic speech conversion' },
-      { type: 'whisper', name: 'Whisper Transcription', description: 'Convert audio to text with high accuracy' }
+      { type: 'whisper', name: 'Whisper Transcription', description: 'Convert audio to text with high accuracy' },
+      { type: 'suno', name: 'Suno', description: 'Music integration and creation' },
     ]
   },
   {
@@ -90,6 +90,7 @@ const nodeCategories: NodeCategory[] = [
 
 const Sidebar = () => {
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['Language Models']);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => 
@@ -105,55 +106,82 @@ const Sidebar = () => {
     event.dataTransfer.effectAllowed = 'move';
   };
 
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
   return (
-    <div className="w-72 border-r border-gray-200 bg-white overflow-y-auto flex flex-col h-full">
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-lg font-bold flex items-center gap-2">
-          <FaRobot className="text-primary" /> AI Services
-        </h2>
-        <p className="text-xs text-gray-500 mt-1">Drag and drop services to the canvas</p>
-      </div>
+    <div className="relative h-full">
+      <div 
+        className={cn(
+          "h-full border-r border-gray-200 bg-white transition-all duration-300 ease-in-out flex flex-col", 
+          isSidebarOpen ? "w-72" : "w-0 overflow-hidden"
+        )}
+      >
+        <div className={cn("flex flex-col h-full", !isSidebarOpen && "opacity-0 pointer-events-none")}>
+          <div className="p-4 border-b border-gray-200">
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <FaRobot className="text-primary" /> AI Services
+            </h2>
+            <p className="text-xs text-gray-500 mt-1">Drag and drop services to the canvas</p>
+          </div>
 
-      <div className="flex-1 overflow-y-auto p-2">
-        {nodeCategories.map((category) => (
-          <div key={category.title} className="mb-2">
-            <Button
-              variant="ghost"
-              className="w-full justify-between text-left p-3 h-auto"
-              onClick={() => toggleCategory(category.title)}
-            >
-              <div className="flex items-center gap-2">
-                <span className={`p-1.5 rounded ${category.color}`}>
-                  {category.icon}
-                </span>
-                <span>{category.title}</span>
-              </div>
-              <span className="text-xs">{expandedCategories.includes(category.title) ? '▼' : '►'}</span>
-            </Button>
-
-            <div className={cn("pl-4 pr-2 mt-1 space-y-1.5", 
-                 !expandedCategories.includes(category.title) && "hidden")}>
-              {category.nodes.map((node) => (
-                <div
-                  key={node.type}
-                  draggable
-                  onDragStart={(e) => onDragStart(e, node.type, node.name)}
-                  className="bg-white p-2 rounded border border-gray-200 cursor-grab hover:bg-gray-50 transition-colors"
+          <div className="flex-1 overflow-y-auto p-2">
+            {nodeCategories.map((category) => (
+              <div key={category.title} className="mb-2">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-between text-left p-3 h-auto"
+                  onClick={() => toggleCategory(category.title)}
                 >
-                  <div className="font-medium text-sm">{node.name}</div>
-                  <div className="text-xs text-gray-500">{node.description}</div>
+                  <div className="flex items-center gap-2">
+                    <span className={`p-1.5 rounded ${category.color}`}>
+                      {category.icon}
+                    </span>
+                    <span>{category.title}</span>
+                  </div>
+                  <span className="text-xs">{expandedCategories.includes(category.title) ? '▼' : '►'}</span>
+                </Button>
+
+                <div className={cn("pl-4 pr-2 mt-1 space-y-1.5", 
+                     !expandedCategories.includes(category.title) && "hidden")}>
+                  {category.nodes.map((node) => (
+                    <div
+                      key={node.type}
+                      draggable
+                      onDragStart={(e) => onDragStart(e, node.type, node.name)}
+                      className="bg-white p-2 rounded border border-gray-200 cursor-grab hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="font-medium text-sm">{node.name}</div>
+                      <div className="text-xs text-gray-500">{node.description}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+            ))}
+          </div>
+          
+          <div className="p-3 border-t border-gray-200 bg-gray-50">
+            <div className="text-xs text-gray-500 text-center">
+              Drag nodes to the canvas and connect them to build your workflow
             </div>
           </div>
-        ))}
-      </div>
-      
-      <div className="p-3 border-t border-gray-200 bg-gray-50">
-        <div className="text-xs text-gray-500 text-center">
-          Drag nodes to the canvas and connect them to build your workflow
         </div>
       </div>
+
+      <Button 
+        onClick={toggleSidebar} 
+        variant="ghost" 
+        size="icon" 
+        className={cn(
+          "absolute top-2 z-10 bg-white border border-gray-200 hover:bg-gray-100 transition-all duration-300 ease-in-out",
+          isSidebarOpen 
+            ? "left-[calc(18rem-0.625rem-2.5rem)]"
+            : "left-2"
+        )}
+      >
+        {isSidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelRightClose className="h-5 w-5" />}
+      </Button>
     </div>
   );
 };
