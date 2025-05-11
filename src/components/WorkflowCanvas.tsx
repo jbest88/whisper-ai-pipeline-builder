@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ReactFlow,
@@ -48,52 +49,86 @@ interface WorkflowCanvasProps {
 }
 
 /* -------------------------------------------------------------------- */
-/* initial data */
-/* -------------------------------------------------------------------- */
-const initialNodes: Node<NodeData>[] = [
-  {
-    id: 'input-1',
-    type: 'serviceNode',
-    position: { x: 100, y: 200 },
-    data: {
-      label: 'User Input',
-      type: 'input',
-      description: 'Enter your prompt here',
-      color: '#4338ca',
-      handles: { source: true, target: false },
-    },
-    draggable: true,
-  },
-  {
-    id: 'output-1',
-    type: 'serviceNode',
-    position: { x: 600, y: 200 },
-    data: {
-      label: 'Response',
-      type: 'output',
-      description: 'AI response will appear here',
-      color: '#4338ca',
-      handles: { source: false, target: true },
-    },
-    draggable: true,
-  },
-];
-
-/* -------------------------------------------------------------------- */
 /* component */
 /* -------------------------------------------------------------------- */
-const WorkflowCanvas = ({ setSelectedNode }: WorkflowCanvasProps) => {
-  const wrapper           = useRef<HTMLDivElement>(null);
-  const [rf, setRf]       = useState<any>(null);
+const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
+  const wrapper = useRef<HTMLDivElement>(null);
+  const [rf, setRf] = useState<any>(null);
 
   /* nodes / edges */
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>(initialNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<WorkflowEdge>([]);
 
   /* ui flags */
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const { toast } = useToast();
+
+  // Load saved nodes and edges from localStorage on initial render
+  useEffect(() => {
+    try {
+      const savedNodes = localStorage.getItem('workflow_nodes');
+      const savedEdges = localStorage.getItem('workflow_edges');
+      
+      if (savedNodes) {
+        const parsedNodes = JSON.parse(savedNodes);
+        setNodes(parsedNodes);
+      } else {
+        // Set default nodes if no saved nodes found
+        setNodes([
+          {
+            id: 'input-1',
+            type: 'serviceNode',
+            position: { x: 100, y: 200 },
+            data: {
+              label: 'User Input',
+              type: 'input',
+              description: 'Enter your prompt here',
+              color: '#4338ca',
+              handles: { source: true, target: false },
+            },
+          },
+          {
+            id: 'output-1',
+            type: 'serviceNode',
+            position: { x: 600, y: 200 },
+            data: {
+              label: 'Response',
+              type: 'output',
+              description: 'AI response will appear here',
+              color: '#4338ca',
+              handles: { source: false, target: true },
+            },
+          },
+        ]);
+      }
+      
+      if (savedEdges) {
+        const parsedEdges = JSON.parse(savedEdges);
+        setEdges(parsedEdges);
+      }
+    } catch (error) {
+      console.error('Error loading workflow from localStorage:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not load saved workflow',
+        variant: 'destructive'
+      });
+    }
+  }, [setNodes, setEdges, toast]);
+
+  // Save nodes and edges to localStorage whenever they change
+  useEffect(() => {
+    if (nodes.length > 0) {
+      localStorage.setItem('workflow_nodes', JSON.stringify(nodes));
+    }
+  }, [nodes]);
+
+  useEffect(() => {
+    if (edges.length > 0) {
+      localStorage.setItem('workflow_edges', JSON.stringify(edges));
+    }
+  }, [edges]);
 
   /* ------------------------------------------------------------------ */
   /* helpers injected into every node                                   */
@@ -187,7 +222,6 @@ const WorkflowCanvas = ({ setSelectedNode }: WorkflowCanvasProps) => {
           openConfig,
           edges: [],
         },
-        draggable: true,
       };
 
       setNodes((nds) => nds.concat(newNode));
@@ -261,7 +295,7 @@ const WorkflowCanvas = ({ setSelectedNode }: WorkflowCanvasProps) => {
         onDragOver={onDragOver}
         onDrop={onDrop}
         onNodeClick={onNodeClick}
-        onPaneClick={onPaneClick}        {/* ← click outside to deselect */}
+        onPaneClick={onPaneClick}
         nodesDraggable
         fitView
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}

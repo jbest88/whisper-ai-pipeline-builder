@@ -50,6 +50,24 @@ const Dashboard = () => {
     }, 1000);
   };
 
+  const handleSaveWorkflow = () => {
+    toast({
+      title: "Workflow Saved",
+      description: "Your workflow has been saved to local storage"
+    });
+  };
+
+  const handleClearWorkflow = () => {
+    if (window.confirm("Are you sure you want to clear the current workflow? This cannot be undone.")) {
+      localStorage.removeItem('workflow_nodes');
+      localStorage.removeItem('workflow_edges');
+      toast({
+        title: "Workflow Cleared",
+        description: "Your workflow has been cleared. Refresh the page to start with a clean workflow."
+      });
+    }
+  };
+
   return (
     <div className="flex h-screen bg-slate-100">
       <Sidebar />
@@ -61,8 +79,11 @@ const Dashboard = () => {
             <p className="text-sm text-gray-500">Create and connect AI services in a visual workflow</p>
           </div>
           <div className="flex space-x-2">
-            <Button variant="outline" onClick={() => toast({ title: "Workflow Saved", description: "Your workflow has been saved successfully" })}>
+            <Button variant="outline" onClick={handleSaveWorkflow}>
               Save
+            </Button>
+            <Button variant="outline" onClick={handleClearWorkflow} className="text-red-500 hover:text-red-600">
+              Clear
             </Button>
             <Button 
               onClick={handleRunWorkflow} 
