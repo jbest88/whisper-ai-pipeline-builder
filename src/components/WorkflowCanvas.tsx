@@ -1,3 +1,4 @@
+
 import { useCallback, useRef, useState, useEffect } from 'react';
 import {
   ReactFlow,
@@ -533,9 +534,9 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
         onDragOver={onDragOver}
         onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
-        draggable={true}
-        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+        // Remove the conflicting draggable prop here - it's already set on the nodes
         nodesDraggable={true}
+        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         deleteKeyCode={['Backspace', 'Delete']}
