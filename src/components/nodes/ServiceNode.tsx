@@ -1,4 +1,3 @@
-
 import { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -153,10 +152,15 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
     }
   };
 
-  // Fix: Ensure openConfig is properly typed and doesn't call an empty object
+  // Fixed openConfig to ensure it properly calls the function from props
   const openConfig = () => {
+    console.log('Opening config for node:', id);
+    console.log('openConfig function available:', typeof data.openConfig === 'function');
+    
     if (typeof data.openConfig === 'function') {
       data.openConfig(id);
+    } else {
+      console.error('openConfig is not available on this node:', data);
     }
   };
 

@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ReactFlow,
@@ -133,10 +132,16 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
   /* ------------------------------------------------------------------ */
   /* helpers injected into every node                                   */
   /* ------------------------------------------------------------------ */
-  const openConfig = (nodeId: string) => {
-    const n = nodes.find((x) => x.id === nodeId);
-    if (n) setSelectedNode(n as AINode);
-  };
+  const openConfig = useCallback((nodeId: string) => {
+    console.log('openConfig called for node:', nodeId);
+    const foundNode = nodes.find((x) => x.id === nodeId);
+    if (foundNode) {
+      console.log('Setting selected node:', foundNode);
+      setSelectedNode(foundNode as AINode);
+    } else {
+      console.error('Node not found:', nodeId);
+    }
+  }, [nodes, setSelectedNode]);
 
   const updateNodeData = useCallback(
     (nodeId: string, newData: Record<string, any>) =>
@@ -157,7 +162,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
             : n,
         ),
       ),
-    [edges, setNodes],
+    [edges, setNodes, openConfig],
   );
 
   /* refresh helper refs in nodes */
@@ -174,7 +179,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
         },
       })),
     );
-  }, [edges, setNodes]);
+  }, [edges, setNodes, updateNodeData, openConfig]);
 
   /* ------------------------------------------------------------------ */
   /* connect handler (minimal)                                          */
