@@ -1,4 +1,3 @@
-
 import { useCallback, useRef, useState } from 'react';
 import {
   ReactFlow,
@@ -99,13 +98,20 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
 
     // If data includes a user input that needs to be sent to the API
     const node = nodes.find(n => n.id === nodeId);
-    if (node?.data.type === 'openai' && newData.input && !node.data.response) {
-      processAINode(nodeId, newData.input);
+    if (node) {
+      // Handle different node types
+      if (node.data.type === 'openai' && newData.input && !node.data.response) {
+        processAINode(nodeId, newData.input, newData.inputType || 'text');
+      } else if (node.data.type === 'whisper' && newData.input && !node.data.response && newData.inputType === 'audio') {
+        processWhisperNode(nodeId, newData.input);
+      } else if (node.data.type === 'elevenlabs' && newData.input && !node.data.response) {
+        processElevenLabsNode(nodeId, newData.input);
+      }
     }
   }, [nodes, edges, setNodes, apiKey]);
 
   // Mock API processing for OpenAI node
-  const processAINode = useCallback(async (nodeId: string, input: string) => {
+  const processAINode = useCallback(async (nodeId: string, input: string | File, inputType: string) => {
     if (!apiKey) {
       toast({
         title: "API Key Missing",
@@ -124,8 +130,14 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
       // Simulate API call with timeout
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      // Generate mock response
-      const response = `AI response to: "${input}"\n\nThis is a simulated response from the OpenAI model. In a real implementation, this would be the actual response from the API call using the provided API key.`;
+      // Generate mock response based on input type
+      let response;
+      if (inputType === 'text') {
+        response = `AI response to: "${input}"\n\nThis is a simulated response from the OpenAI model. In a real implementation, this would be the actual response from the API call using the provided API key.`;
+      } else {
+        const fileInput = input as File;
+        response = `AI processed ${inputType} file: ${fileInput.name} (${fileInput.size} bytes)\n\nThis is a simulated response for processing a ${inputType} file with OpenAI.`;
+      }
       
       // Update node with response
       updateNodeData(nodeId, { 
@@ -154,7 +166,112 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
     } finally {
       setIsProcessing(false);
     }
-  }, [apiKey, edges, updateNodeData, toast]);
+  }, [apiKey, edges, updateNodeData, toast, setIsProcessing]);
+
+  // Mock API processing for Whisper node
+  const processWhisperNode = useCallback(async (nodeId: string, audioFile: File) => {
+    if (!apiKey) {
+      toast({
+        title: "API Key Missing",
+        description: "Please configure API key in the node settings",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    
+    // Update the node to show processing state
+    updateNodeData(nodeId, { processing: true });
+    
+    try {
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Generate mock transcription response
+      const response = `Transcription of audio file: ${audioFile.name}\n\nThis is a simulated transcription from Whisper. In a real implementation, this would contain the actual transcribed text from the audio file.`;
+      
+      // Update node with response
+      updateNodeData(nodeId, { 
+        processing: false, 
+        response: response 
+      });
+      
+      // Find connected output nodes and update them
+      const connectedEdges = edges.filter(edge => edge.source === nodeId);
+      connectedEdges.forEach(edge => {
+        updateNodeData(edge.target, { response });
+      });
+      
+      toast({
+        title: "Transcription Complete",
+        description: "Audio has been transcribed"
+      });
+    } catch (error) {
+      console.error('Error processing Whisper node:', error);
+      toast({
+        title: "Processing Error",
+        description: "Failed to transcribe audio",
+        variant: "destructive"
+      });
+      updateNodeData(nodeId, { processing: false, error: "Failed to transcribe" });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [apiKey, edges, updateNodeData, toast, setIsProcessing]);
+
+  // Mock API processing for ElevenLabs node
+  const processElevenLabsNode = useCallback(async (nodeId: string, input: string | File) => {
+    if (!apiKey) {
+      toast({
+        title: "API Key Missing",
+        description: "Please configure ElevenLabs API key in the node settings",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    
+    // Update the node to show processing state
+    updateNodeData(nodeId, { processing: true });
+    
+    try {
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Generate mock response
+      const textInput = typeof input === 'string' ? input : 'Transcribed text';
+      const response = `Text-to-Speech complete for: "${textInput.substring(0, 50)}${textInput.length > 50 ? '...' : ''}"\n\nThis is a simulated TTS response. In a real implementation, an audio file would be generated.`;
+      
+      // Update node with response
+      updateNodeData(nodeId, { 
+        processing: false, 
+        response: response 
+      });
+      
+      // Find connected output nodes and update them
+      const connectedEdges = edges.filter(edge => edge.source === nodeId);
+      connectedEdges.forEach(edge => {
+        updateNodeData(edge.target, { response });
+      });
+      
+      toast({
+        title: "Speech Generation Complete",
+        description: "Text has been converted to speech"
+      });
+    } catch (error) {
+      console.error('Error processing ElevenLabs node:', error);
+      toast({
+        title: "Processing Error",
+        description: "Failed to generate speech",
+        variant: "destructive"
+      });
+      updateNodeData(nodeId, { processing: false, error: "Failed to generate speech" });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [apiKey, edges, updateNodeData, toast, setIsProcessing]);
 
   // Initialize nodes with updateNodeData function
   useCallback(() => {
@@ -168,7 +285,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
         },
       }))
     );
-  }, [updateNodeData, edges]);
+  }, [updateNodeData, edges, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params: Connection) => {

@@ -12,7 +12,8 @@ export interface NodeData {
   };
   icon?: JSX.Element;
   config?: Record<string, any>;
-  input?: string;
+  input?: string | File | null;
+  inputType?: 'text' | 'file' | 'audio' | 'image' | 'video';
   response?: string;
   error?: string;
   processing?: boolean;
