@@ -440,7 +440,7 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
   };
 
   return (
-    <div className="relative nodrag" data-type={data.type}> 
+    <div className="relative" data-type={data.type}> 
       {data.handles?.target && (
         <Handle
           type="target"
