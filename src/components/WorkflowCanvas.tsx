@@ -182,8 +182,16 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
         return;
       }
       
-      // Add the new edge
-      const newEdge = { ...params, animated: true, id: `e-${params.source}-${params.target}` };
+      // Add the new edge with required 'animated' property
+      const newEdge: WorkflowEdge = { 
+        ...params, 
+        animated: true, 
+        id: `e-${params.source}-${params.target}`,
+        // Add default values for sourceHandle and targetHandle if they're undefined
+        sourceHandle: params.sourceHandle || null,
+        targetHandle: params.targetHandle || null
+      };
+      
       setEdges((eds) => addEdge(newEdge, eds));
       
       // Update source and target nodes with edge information

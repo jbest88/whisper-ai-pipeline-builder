@@ -23,4 +23,8 @@ export interface NodeData {
 
 // Define properly typed AINode and WorkflowEdge
 export type AINode = Node<NodeData>;
-export type WorkflowEdge = Edge;
+export type WorkflowEdge = Edge & {
+  animated: boolean; // Make animated required to match the expected type
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+};
