@@ -2,16 +2,33 @@ import { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { AINode } from '../../types/workflow';
-import { FaBrain, FaImage, FaVolumeUp, FaDatabase, FaFileAlt } from 'react-icons/fa';
+import {
+  FaBrain,
+  FaImage,
+  FaVolumeUp,
+  FaDatabase,
+  FaFileAlt,
+} from 'react-icons/fa';
 import { BsChatText } from 'react-icons/bs';
-import { FiSend, FiFile, FiUpload } from 'react-icons/fi';
+import { FiSend, FiUpload } from 'react-icons/fi';
 import { MdWebhook } from 'react-icons/md';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { FileAudio, FileVideo, FileImage, FileCode, FileText } from 'lucide-react';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import {
+  FileAudio,
+  FileVideo,
+  FileImage,
+  FileCode,
+  FileText,
+  Settings,
+} from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
@@ -20,76 +37,77 @@ interface ServiceNodeProps {
   id: string;
 }
 
+/**
+ * ServiceNode – full‐featured workflow node renderer
+ * ▸ Entire card draggable; small gear button opens external config panel
+ */
 const ServiceNode = ({ data, id }: ServiceNodeProps) => {
+  /* ------------------------------------------------------------------ */
+  /* local state                                                         */
+  /* ------------------------------------------------------------------ */
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'text' | 'file'>('text');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showPreview, setShowPreview] = useState(true);
   const [useResponseAsContext, setUseResponseAsContext] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  
-  // Find connected response nodes (if any)
-  const [connectedResponseNode, setConnectedResponseNode] = useState<{id: string, response: string | Blob | null} | null>(null);
-  
-  // Determine appropriate input type based on connected nodes
-  useEffect(() => {
-    if (data.edges) {
-      // For input nodes, check if there are any response nodes connected to it
-      if (data.type === 'input') {
-        // First, check edges where this node is the target (incoming edges)
-        const incomingEdges = data.edges.filter(edge => edge.target === id);
-        
-        // For each incoming edge, check if the source is an output/response node
-        for (const edge of incomingEdges) {
-          const sourceNodeId = edge.source;
-          if (data.nodes) {
-            const sourceNode = data.nodes.find(node => node.id === sourceNodeId);
-            if (sourceNode && sourceNode.data.type === 'output') {
-              setConnectedResponseNode({
-                id: sourceNodeId,
-                response: sourceNode.data.response || null
-              });
-              return; // Found a connected response node
-            }
-          }
-        }
-        
-        // If no response nodes are found as direct connections, reset the state
-        setConnectedResponseNode(null);
-      }
-      
-      const targetNodes = data.edges
-        .filter(edge => edge.source === id)
-        .map(edge => edge.target);
-      
-      // If connected to audio processing node (whisper, elevenlabs)
-      const hasAudioTarget = data.nodes
-        ?.filter(node => targetNodes.includes(node.id))
-        .some(node => node.data.type === 'whisper' || node.data.type === 'elevenlabs');
-      
-      if (hasAudioTarget) {
-        setSelectedTab('file');
-      }
-    }
-  }, [data.edges, data.nodes, id, data.type]);
 
-  // Update input value when using response as context
+  // track connected response node (for context injection)
+  const [connectedResponseNode, setConnectedResponseNode] = useState<
+    { id: string; response: string | Blob | null } | null
+  >(null);
+
+  /* ------------------------------------------------------------------ */
+  /* edge / node introspection                                           */
+  /* ------------------------------------------------------------------ */
   useEffect(() => {
-    if (useResponseAsContext && connectedResponseNode?.response && typeof connectedResponseNode.response === 'string') {
-      setInputValue(prev => {
-        // Only prepend the context if it's not already there
-        if (!prev.includes("Context:\n" + connectedResponseNode.response)) {
-          return `Context:\n${connectedResponseNode.response}\n\nYour task:${prev ? "\n" + prev : ''}`;
+    if (!data.edges) return;
+
+    // ─── for INPUT nodes, detect any OUTPUT feeding into it ───────────
+    if (data.type === 'input') {
+      const incoming = data.edges.filter((e) => e.target === id);
+      let found: typeof connectedResponseNode = null;
+      incoming.forEach((edge) => {
+        const src = data.nodes?.find((n) => n.id === edge.source);
+        if (src?.data.type === 'output') {
+          found = { id: src.id, response: src.data.response || null };
         }
-        return prev;
+      });
+      setConnectedResponseNode(found);
+    }
+
+    // if input connects to audio nodes, default to file tab
+    const audioTargets = data.edges
+      .filter((e) => e.source === id)
+      .map((e) => e.target);
+    const hasAudio = data.nodes
+      ?.filter((n) => audioTargets.includes(n.id))
+      .some((n) => n.data.type === 'whisper' || n.data.type === 'elevenlabs');
+    if (hasAudio) setSelectedTab('file');
+  }, [data.edges, data.nodes, data.type, id]);
+
+  // prepend context when toggle enabled
+  useEffect(() => {
+    if (
+      useResponseAsContext &&
+      connectedResponseNode?.response &&
+      typeof connectedResponseNode.response === 'string'
+    ) {
+      setInputValue((prev) => {
+        if (prev.includes('Context:\n' + connectedResponseNode.response)) return prev;
+        return `Context:\n${connectedResponseNode.response}\n\nYour task:${prev ? '\n' + prev : ''}`;
       });
     }
   }, [useResponseAsContext, connectedResponseNode]);
-  
-  const getIcon = () => {
+
+  /* ------------------------------------------------------------------ */
+  /* helpers                                                             */
+  /* ------------------------------------------------------------------ */
+  const typeIcon = () => {
     switch (data.type) {
       case 'openai':
       case 'anthropic':
@@ -119,344 +137,234 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
     }
   };
 
-  const getResponseTypeIcon = () => {
+  const respIcon = () => {
     switch (data.responseType) {
-      case 'audio': return <FileAudio className="h-4 w-4" />;
-      case 'video': return <FileVideo className="h-4 w-4" />;
-      case 'image': return <FileImage className="h-4 w-4" />;
-      case 'code': return <FileCode className="h-4 w-4" />;
-      default: return <FileText className="h-4 w-4" />;
+      case 'audio':
+        return <FileAudio className="h-4 w-4" />;
+      case 'video':
+        return <FileVideo className="h-4 w-4" />;
+      case 'image':
+        return <FileImage className="h-4 w-4" />;
+      case 'code':
+        return <FileCode className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-    }
-  };
+  const openConfig = () => data.openConfig?.(id);
 
   const triggerFileUpload = () => fileInputRef.current?.click();
 
-  // Handle sending data to connected nodes
-  const handleSendData = () => {
-    if (data.type === 'input') {
-      const hasInput = selectedTab === 'text'
-        ? inputValue.trim() !== ''
-        : !!selectedFile;
-      
-      if (hasInput && data.updateNodeData) {
-        setIsProcessing(true);
-        const targets = data.edges
-          ?.filter(edge => edge.source === id)
-          .map(edge => edge.target) || [];
-        
-        targets.forEach(targetId => {
-          data.updateNodeData!(targetId, {
-            input: selectedTab === 'text' ? inputValue : selectedFile,
-            inputType: selectedTab === 'text'
-              ? 'text'
-              : selectedFile?.type.includes('audio') ? 'audio'
-              : selectedFile?.type.includes('video') ? 'video'
-              : 'file',
-            processing: true
-          });
-        });
+  /* ------------------------------------------------------------------ */
+  /* send input downstream                                               */
+  /* ------------------------------------------------------------------ */
+  const handleSend = () => {
+    if (data.type !== 'input') return;
+    const valid = selectedTab === 'text' ? inputValue.trim() : selectedFile;
+    if (!valid) return;
 
-        setIsProcessing(false);
-      }
-    }
+    setIsProcessing(true);
+    const targets = data.edges
+      ?.filter((e) => e.source === id)
+      .map((e) => e.target) || [];
+
+    targets.forEach((tid) =>
+      data.updateNodeData?.(tid, {
+        input: selectedTab === 'text' ? inputValue : selectedFile,
+        inputType:
+          selectedTab === 'text'
+            ? 'text'
+            : selectedFile?.type.includes('audio')
+            ? 'audio'
+            : selectedFile?.type.includes('video')
+            ? 'video'
+            : selectedFile?.type.includes('image')
+            ? 'image'
+            : 'file',
+        processing: true,
+      })
+    );
+    setIsProcessing(false);
   };
 
-  // Render different types of content based on responseType
-  const renderContentByType = () => {
+  /* ------------------------------------------------------------------ */
+  /* render helpers                                                      */
+  /* ------------------------------------------------------------------ */
+  const renderPreview = () => {
     if (!data.response) return null;
-
     switch (data.responseType) {
-      case 'image':
-        if (showPreview) {
-          const imageUrl = typeof data.response === 'string' 
-            ? data.response 
-            : URL.createObjectURL(data.response as Blob);
-          return (
-            <div className="flex flex-col items-center">
-              <img 
-                src={imageUrl} 
-                alt="Generated image"
-                className="max-h-28 max-w-full object-contain rounded"
-              />
-            </div>
-          );
-        }
-        return <div className="text-xs text-green-600">Image generated</div>;
-        
-      case 'audio':
-        if (showPreview) {
-          const audioUrl = typeof data.response === 'string'
+      case 'image': {
+        const src =
+          typeof data.response === 'string'
             ? data.response
             : URL.createObjectURL(data.response as Blob);
-          return (
-            <div className="flex flex-col items-center">
-              <audio 
-                ref={audioRef}
-                controls
-                className="w-full h-8 mt-1"
-                src={audioUrl}
-              />
-            </div>
-          );
-        }
-        return <div className="text-xs text-green-600">Audio generated</div>;
-        
-      case 'video':
-        if (showPreview) {
-          const videoUrl = typeof data.response === 'string'
+        return showPreview ? (
+          <img src={src} alt="img" className="max-h-28 object-contain rounded" />
+        ) : (
+          <p className="text-xs text-green-600">Image generated</p>
+        );
+      }
+      case 'audio': {
+        const src =
+          typeof data.response === 'string'
             ? data.response
             : URL.createObjectURL(data.response as Blob);
-          return (
-            <div className="flex flex-col items-center">
-              <video
-                ref={videoRef}
-                controls
-                className="max-h-28 max-w-full rounded"
-                src={videoUrl}
-              />
-            </div>
-          );
-        }
-        return <div className="text-xs text-green-600">Video generated</div>;
-        
+        return showPreview ? (
+          <audio ref={audioRef} controls className="w-full h-8" src={src} />
+        ) : (
+          <p className="text-xs text-green-600">Audio generated</p>
+        );
+      }
+      case 'video': {
+        const src =
+          typeof data.response === 'string'
+            ? data.response
+            : URL.createObjectURL(data.response as Blob);
+        return showPreview ? (
+          <video ref={videoRef} controls className="max-h-28 rounded" src={src} />
+        ) : (
+          <p className="text-xs text-green-600">Video generated</p>
+        );
+      }
       case 'code':
-        if (showPreview) {
-          return (
-            <div className="w-full">
-              <pre className="text-xs bg-gray-100 p-1 rounded overflow-x-auto">
-                <code>{typeof data.response === 'string' ? data.response : 'Code snippet'}</code>
-              </pre>
-            </div>
-          );
-        }
-        return <div className="text-xs text-green-600">Code generated</div>;
-        
+        return showPreview ? (
+          <pre className="bg-gray-100 p-1 text-xs rounded overflow-x-auto">
+            <code>{typeof data.response === 'string' ? data.response : 'code'}</code>
+          </pre>
+        ) : (
+          <p className="text-xs text-green-600">Code generated</p>
+        );
       default:
-        // Default text display
         return (
-          <div className="text-xs max-h-32 overflow-y-auto">
-            <div className="whitespace-pre-wrap">
-              {typeof data.response === 'string' 
-                ? data.response 
-                : 'Response received'}
-            </div>
+          <div className="text-xs max-h-32 overflow-y-auto whitespace-pre-wrap">
+            {typeof data.response === 'string' ? data.response : 'Response'}
           </div>
         );
     }
   };
 
-  const renderNodeContent = () => {
+  const renderContent = () => {
     switch (data.type) {
       case 'input':
         return (
           <>
             {connectedResponseNode && (
               <div className="flex items-center justify-between mb-2 text-xs">
-                <Label htmlFor={`context-${id}`}>Use response as context</Label>
-                <Switch 
-                  id={`context-${id}`} 
-                  checked={useResponseAsContext} 
+                <Label htmlFor={`ctx-${id}`}>Use response as context</Label>
+                <Switch
+                  id={`ctx-${id}`}
+                  checked={useResponseAsContext}
                   onCheckedChange={setUseResponseAsContext}
                   className="scale-75"
                 />
               </div>
             )}
-            <Tabs 
-              defaultValue="text" 
+            <Tabs
               value={selectedTab}
-              onValueChange={(value) => setSelectedTab(value as 'text' | 'file')}
+              onValueChange={(v) => setSelectedTab(v as 'text' | 'file')}
               className="w-full"
             >
-              <TabsList className="grid w-full grid-cols-2 mb-2">
+              <TabsList className="grid grid-cols-2 mb-2 text-xs">
                 <TabsTrigger value="text">Text</TabsTrigger>
                 <TabsTrigger value="file">File</TabsTrigger>
               </TabsList>
-              <TabsContent value="text" className="mt-0">
-                <Textarea 
-                  placeholder="Type your prompt here..."
+              <TabsContent value="text">
+                <Textarea
+                  rows={3}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  className="w-full mb-2 text-sm"
-                  rows={3}
+                  placeholder="Enter prompt…"
+                  className="text-sm mb-2"
                 />
               </TabsContent>
-              <TabsContent value="file" className="mt-0">
-                <div className="border border-dashed border-gray-300 rounded-md p-4 mb-2 text-center">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
+              <TabsContent value="file">
+                <div className="border border-dashed rounded p-4 text-center">
+                  <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
                   {selectedFile ? (
-                    <div className="flex flex-col items-center gap-1">
+                    <div className="space-y-1">
                       <Badge variant="outline" className="mb-1">
                         {selectedFile.type}
                       </Badge>
-                      <span className="text-xs text-gray-700 truncate max-w-full">
-                        {selectedFile.name}
-                      </span>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        className="mt-1"
-                        onClick={triggerFileUpload}
-                      >
-                        Change File
-                      </Button>
+                      <p className="truncate text-xs max-w-full">{selectedFile.name}</p>
+                      <Button size="sm" variant="outline" onClick={triggerFileUpload}>Change</Button>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center">
-                      <FiUpload className="h-8 w-8 text-gray-400 mb-1" />
-                      <span className="text-xs text-gray-500">Click to upload a file</span>
-                      <Button 
-                        size="sm" 
-                        variant="ghost"
-                        onClick={triggerFileUpload}
-                        className="mt-1"
-                      >
-                        Browse Files
-                      </Button>
-                    </div>
+                    <Button variant="ghost" className="flex flex-col items-center text-gray-500" onClick={triggerFileUpload}>
+                      <FiUpload className="h-6 w-6 mb-1" /> Browse
+                    </Button>
                   )}
                 </div>
               </TabsContent>
             </Tabs>
-            <Button 
-              size="sm" 
-              onClick={handleSendData}
-              disabled={isProcessing || (selectedTab === 'text' ? !inputValue.trim() : !selectedFile)}
+            <Button
+              size="sm"
               className="w-full"
+              disabled={isProcessing || (selectedTab === 'text' ? !inputValue.trim() : !selectedFile)}
+              onClick={handleSend}
             >
               Send to AI
             </Button>
           </>
         );
-      case 'openai':
-      case 'anthropic':
-      case 'perplexity':
-        return (
-          <div className="text-xs">
-            {data.processing ? (
-              <div className="animate-pulse">Processing...</div>
-            ) : data.response ? (
-              <div className="text-green-600">Completed</div>
-            ) : data.input ? (
-              <div>
-                {typeof data.input === 'string' ? 
-                  `Ready to process text input (${data.input.length} chars)` :
-                  `Ready to process ${data.inputType} file`
-                }
-              </div>
-            ) : (
-              <div>{data.description || 'Waiting for input...'}</div>
-            )}
-          </div>
-        );
-      case 'whisper':
-        return (
-          <div className="text-xs">
-            {data.processing ? (
-              <div className="animate-pulse">Transcribing audio...</div>
-            ) : data.response ? (
-              <div className="text-green-600">Transcription complete</div>
-            ) : data.input && data.inputType === 'audio' ? (
-              <div>Ready to transcribe audio</div>
-            ) : (
-              <div>{data.description || 'Waiting for audio input...'}</div>
-            )}
-          </div>
-        );
-      case 'elevenlabs':
-        return (
-          <div className="text-xs">
-            {data.processing ? (
-              <div className="animate-pulse">Generating speech...</div>
-            ) : data.response ? (
-              <div className="text-green-600">Speech generated</div>
-            ) : data.input ? (
-              <div>Ready to convert text to speech</div>
-            ) : (
-              <div>{data.description || 'Waiting for text input...'}</div>
-            )}
-          </div>
-        );
+
       case 'output':
         return (
-          <div className="flex flex-col w-full space-y-2">
-            {data.response && data.responseType && (
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1">
-                  {getResponseTypeIcon()}
-                  <span className="capitalize">{data.responseType}</span>
-                </div>
+          <div className="flex flex-col space-y-2 text-xs">
+            {data.response && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">{respIcon()}<span className="capitalize">{data.responseType}</span></div>
                 {data.responseType !== 'text' && (
                   <div className="flex items-center gap-1">
-                    <Label htmlFor={`preview-${id}`} className="text-xs">Preview</Label>
-                    <Switch 
-                      id={`preview-${id}`} 
-                      checked={showPreview} 
-                      onCheckedChange={setShowPreview} 
+                    <Label htmlFor={`prev-${id}`}>Preview</Label>
+                    <Switch
+                      id={`prev-${id}`}
                       className="scale-75"
+                      checked={showPreview}
+                      onCheckedChange={setShowPreview}
                     />
                   </div>
                 )}
               </div>
             )}
-            {data.response ? (
-              renderContentByType()
-            ) : (
-              <div className="text-xs">
-                {data.description || 'Waiting for response...'}
-              </div>
-            )}
+            {data.response ? renderPreview() : <p>{data.description || 'Waiting for response…'}</p>}
           </div>
         );
+
       default:
-        return (
-          <div className="text-xs text-gray-600">
-            {data.description || 'Configure this node to add it to your workflow'}
-          </div>
-        );
+        return renderPreview() || <p className="text-xs">{data.description || 'Waiting…'}</p>;
     }
   };
 
+  /* ------------------------------------------------------------------ */
+  /* JSX                                                                 */
+  /* ------------------------------------------------------------------ */
   return (
     <div className="relative" data-type={data.type}>
       {data.handles?.target && (
-        <Handle
-          type="target"
-          position={Position.Left}
-          style={{ background: data.color, width: 8, height: 8 }}
-        />
+        <Handle type="target" position={Position.Left} style={{ background: data.color, width: 8, height: 8 }} />
       )}
+
       <Card className="w-60 shadow-md">
+        {/* Header (drag handle + gear) */}
         <CardHeader
+          data-reactflow-drag-handle
           className="pb-2 pt-3 px-4 flex items-center justify-between"
           style={{ backgroundColor: data.color, color: 'white' }}
         >
-          <div className="flex items-center gap-2">
-            {getIcon()}
-            <span className="font-semibold text-sm">{data.label}</span>
-          </div>
+          <div className="flex items-center gap-2">{typeIcon()}<span className="font-semibold text-sm truncate max-w-[120px]">{data.label}</span></div>
+          <button title="Configure" className="nodrag" onClick={openConfig}>
+            <Settings className="h-4 w-4 opacity-80 hover:opacity-100" />
+          </button>
         </CardHeader>
-        <CardContent className="p-3">
-          {renderNodeContent()}
-          {/* other UI bits… */}
+
+        <CardContent className="p-3 space-y-2">
+          {renderContent()}
         </CardContent>
       </Card>
+
       {data.handles?.source && (
-        <Handle
-          type="source"
-          position={Position.Right}
-          style={{ background: data.color, width: 8, height: 8 }}
-        />
+        <Handle type="source" position={Position.Right} style={{ background: data.color, width: 8, height: 8 }} />
       )}
     </div>
   );
