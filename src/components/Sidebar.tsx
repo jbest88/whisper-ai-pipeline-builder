@@ -98,6 +98,8 @@ const Sidebar = () => {
   useEffect(() => {
     if (!searchQuery.trim()) {
       setFilteredCategories(nodeCategories);
+      // Reset expanded categories to default state when search is cleared
+      setExpandedCategories(['Language Models']);
       return;
     }
     
@@ -147,6 +149,10 @@ const Sidebar = () => {
     setSearchQuery(e.target.value);
   };
 
+  const handleClearSearch = () => {
+    setSearchQuery('');
+  };
+
   return (
     <div className="relative h-full">
       <div 
@@ -172,6 +178,15 @@ const Sidebar = () => {
                 onChange={handleSearchChange}
                 className="pl-9 text-sm w-full"
               />
+              {searchQuery && (
+                <button
+                  onClick={handleClearSearch}
+                  className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                >
+                  <span className="sr-only">Clear search</span>
+                  ×
+                </button>
+              )}
             </div>
           </div>
 
