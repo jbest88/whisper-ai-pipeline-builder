@@ -20,9 +20,9 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import '@xyflow/react/dist/style.css';
 import { AINode, WorkflowEdge, NodeData } from '../types/workflow';
-import { Trash, ZoomIn, ZoomOut } from 'lucide-react';
+import { Trash, ZoomIn, ZoomOut, PlusCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
+import ServiceMenu from './ServiceMenu';
 import ServiceNode from './nodes/ServiceNode';
 import { getNodeIcon, getNodeColor } from '../utils/nodeUtils';
 
@@ -74,6 +74,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
   const { toast } = useToast();
   const reactFlowInstance = useReactFlow();
   const [reactFlowInst, setReactFlowInst] = useState<any>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -172,6 +173,49 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
     }
   };
 
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleAddNode = (type: string, nodeName: string) => {
+    if (!reactFlowInst) return;
+    
+    // Get the center of the viewport
+    const { x, y } = reactFlowInst.getViewport();
+    const centerX = reactFlowInst.width / 2;
+    const centerY = reactFlowInst.height / 2;
+    
+    // Convert screen coordinates to flow coordinates
+    const position = reactFlowInst.screenToFlowPosition({
+      x: centerX,
+      y: centerY,
+    });
+    
+    const color = getNodeColor(type);
+    
+    const newNode: Node<NodeData> = {
+      id: `${type}-${Math.floor(Math.random() * 10000)}`,
+      type: 'serviceNode',
+      position,
+      data: {
+        label: nodeName,
+        type: type,
+        description: '',
+        color: color,
+        handles: { source: true, target: true },
+        icon: getNodeIcon(type),
+        config: {}
+      },
+    };
+
+    setNodes((nds) => nds.concat(newNode));
+    
+    toast({
+      title: "Node Added",
+      description: `${nodeName} has been added to your workflow`
+    });
+  };
+
   return (
     <div className="h-full w-full" ref={reactFlowWrapper}>
       <ReactFlow
@@ -216,6 +260,24 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
             <ZoomOut className="h-4 w-4" />
           </Button>
         </Panel>
+        
+        {/* Add Node Button */}
+        <div className="absolute bottom-4 right-4 z-10">
+          <Button
+            size="icon"
+            className={`rounded-full shadow-lg p-3 transition-colors ${isMenuOpen ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-primary/90'}`}
+            onClick={toggleMenu}
+          >
+            {isMenuOpen ? <X size={24} /> : <PlusCircle size={24} />}
+          </Button>
+        </div>
+
+        {/* Service Menu */}
+        {isMenuOpen && (
+          <div className="absolute bottom-0 left-0 right-0 z-10 bg-white/95 shadow-lg border-t border-gray-200 transition-all duration-300 ease-in-out">
+            <ServiceMenu onSelectNode={handleAddNode} onClose={toggleMenu} />
+          </div>
+        )}
       </ReactFlow>
     </div>
   );

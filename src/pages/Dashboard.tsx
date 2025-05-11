@@ -5,7 +5,6 @@ import Sidebar from '../components/Sidebar';
 import NodeConfigPanel from '../components/NodeConfigPanel';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
 import { AINode } from '../types/workflow';
 
 const Dashboard = () => {
@@ -52,12 +51,6 @@ const Dashboard = () => {
         <div className="flex-1 flex overflow-hidden">
           <div className="flex-1 relative">
             <WorkflowCanvas setSelectedNode={setSelectedNode} apiKey={apiKey} setApiKey={setApiKey} />
-            <button 
-              className="absolute bottom-4 right-4 bg-primary text-white p-2 rounded-full shadow-lg hover:bg-primary/90 transition-colors"
-              onClick={() => toast({ title: "New Node", description: "Drag nodes from the sidebar to add them to your workflow" })}
-            >
-              <PlusCircle size={24} />
-            </button>
           </div>
           
           {selectedNode && (
