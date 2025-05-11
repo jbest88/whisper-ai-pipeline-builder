@@ -26,13 +26,53 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
   const [selectedTab, setSelectedTab] = useState<'text' | 'file'>('text');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showPreview, setShowPreview] = useState(true);
+  const [useResponseAsContext, setUseResponseAsContext] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   
+  // Find connected response nodes (if any)
+  const [connectedResponseNode, setConnectedResponseNode] = useState<{id: string, response: string | Blob | null} | null>(null);
+  
   // Determine appropriate input type based on connected nodes
   useEffect(() => {
     if (data.edges) {
+      // For input nodes, check if there are any response nodes connected to it
+      if (data.type === 'input') {
+        const connectedToResponse = data.edges
+          .filter(edge => edge.target === id) // Find edges where this node is the target
+          .map(edge => {
+            const sourceNodeId = edge.source;
+            // Find the source node in the DOM to check its type
+            const sourceNode = document.getElementById(sourceNodeId);
+            const sourceNodeType = sourceNode?.getAttribute('data-type');
+            
+            // If the source is an output node, get its response data
+            if (sourceNodeType === 'output') {
+              return {
+                id: sourceNodeId,
+                type: sourceNodeType,
+                // We'll get the actual response later from the nodes data
+              };
+            }
+            return null;
+          })
+          .filter(Boolean)[0]; // Get the first one if there are multiple
+        
+        // If connected to a response node, get its response data from the node itself
+        if (connectedToResponse && data.nodes) {
+          const responseNode = data.nodes.find(node => node.id === connectedToResponse.id);
+          if (responseNode?.data?.response) {
+            setConnectedResponseNode({
+              id: connectedToResponse.id,
+              response: responseNode.data.response
+            });
+          }
+        } else {
+          setConnectedResponseNode(null);
+        }
+      }
+      
       const targetNodes = data.edges
         .filter(edge => edge.source === id)
         .map(edge => edge.target);
@@ -48,7 +88,20 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
         setSelectedTab('file');
       }
     }
-  }, [data.edges, id]);
+  }, [data.edges, id, data.type, data.nodes]);
+
+  // Update input value when using response as context
+  useEffect(() => {
+    if (useResponseAsContext && connectedResponseNode?.response && typeof connectedResponseNode.response === 'string') {
+      setInputValue(prev => {
+        // Only prepend the context if it's not already there
+        if (!prev.includes("Context:\n" + connectedResponseNode.response)) {
+          return `Context:\n${connectedResponseNode.response}\n\nYour task:${prev ? "\n" + prev : ''}`;
+        }
+        return prev;
+      });
+    }
+  }, [useResponseAsContext, connectedResponseNode]);
   
   const getIcon = () => {
     switch (data.type) {
@@ -116,7 +169,9 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
         setIsProcessing(true);
         // Find connected edges and nodes
         const edges = data.edges || [];
-        const targetNodes = edges.map(edge => edge.target);
+        const targetNodes = edges
+          .filter(edge => edge.source === id) // Only edges where this node is the source
+          .map(edge => edge.target);
         
         // Set the input value as data to be processed by target nodes
         targetNodes.forEach(targetId => {
@@ -225,6 +280,17 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
       case 'input':
         return (
           <>
+            {connectedResponseNode && (
+              <div className="flex items-center justify-between mb-2 text-xs">
+                <Label htmlFor={`context-${id}`}>Use response as context</Label>
+                <Switch 
+                  id={`context-${id}`} 
+                  checked={useResponseAsContext} 
+                  onCheckedChange={setUseResponseAsContext}
+                  className="scale-75"
+                />
+              </div>
+            )}
             <Tabs 
               defaultValue="text" 
               value={selectedTab}

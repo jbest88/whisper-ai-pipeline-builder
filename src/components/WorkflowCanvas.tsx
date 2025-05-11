@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -89,6 +89,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
               ...newData,
               updateNodeData, // Pass the function so nodes can communicate
               edges: edges.filter(e => e.source === node.id || e.target === node.id),
+              nodes: nds, // Pass all nodes to each node so they can reference other nodes' data
             },
           };
         }
@@ -323,7 +324,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
   }, [apiKey, edges, updateNodeData, toast, setIsProcessing]);
 
   // Initialize nodes with updateNodeData function
-  useCallback(() => {
+  useEffect(() => {
     setNodes((nds) =>
       nds.map((node) => ({
         ...node,
@@ -331,10 +332,11 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
           ...node.data,
           updateNodeData,
           edges: edges.filter(e => e.source === node.id || e.target === node.id),
+          nodes: nds, // Pass all nodes to each node so they can reference other nodes' data
         },
       }))
     );
-  }, [updateNodeData, edges, setNodes, setEdges]);
+  }, [updateNodeData, edges, setNodes]);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -389,6 +391,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
             ...node.data,
             updateNodeData,
             edges: [...edges, newEdge].filter(e => e.source === node.id || e.target === node.id),
+            nodes: nds
           },
         }))
       );

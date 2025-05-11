@@ -21,6 +21,7 @@ export interface NodeData {
   processing?: boolean;
   updateNodeData?: (nodeId: string, data: Record<string, any>) => void;
   edges?: Edge[];
+  nodes?: Node<NodeData>[];
   [key: string]: unknown; // Add index signature to satisfy Record<string, unknown>
 }
 
