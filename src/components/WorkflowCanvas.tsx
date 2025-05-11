@@ -20,6 +20,8 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import '@xyflow/react/dist/style.css';
 import { AINode, WorkflowEdge, NodeData } from '../types/workflow';
+import { Trash, ZoomIn, ZoomOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 import ServiceNode from './nodes/ServiceNode';
 import { getNodeIcon, getNodeColor } from '../utils/nodeUtils';
@@ -149,6 +151,27 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
     setSelectedNode(node as AINode);
   };
 
+  const handleDeleteSelectedNodes = () => {
+    setNodes((nds) => nds.filter((node) => !node.selected));
+    
+    toast({
+      title: "Nodes Deleted",
+      description: "Selected nodes have been removed from the workflow"
+    });
+  };
+
+  const zoomIn = () => {
+    if (reactFlowInst) {
+      reactFlowInst.zoomIn();
+    }
+  };
+
+  const zoomOut = () => {
+    if (reactFlowInst) {
+      reactFlowInst.zoomOut({ maxZoom: 0.05 }); // Allow zooming out further
+    }
+  };
+
   return (
     <div className="h-full w-full" ref={reactFlowWrapper}>
       <ReactFlow
@@ -165,6 +188,8 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
         fitView
         fitViewOptions={{ padding: 0.2 }}
         deleteKeyCode={['Backspace', 'Delete']}
+        minZoom={0.05} // Set minimum zoom level to allow zooming out further
+        maxZoom={2}    // Set maximum zoom level
       >
         <Background />
         <Controls />
@@ -176,7 +201,20 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
           <div className="bg-white shadow-md rounded p-3 text-xs">
             <p>Click on a node to configure it</p>
             <p>Drag between handles to connect nodes</p>
+            <p>Press Delete/Backspace to remove selected nodes</p>
           </div>
+        </Panel>
+        <Panel position="bottom-left" className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={handleDeleteSelectedNodes} className="bg-white">
+            <Trash className="h-4 w-4 mr-1" />
+            Delete Selected
+          </Button>
+          <Button size="sm" variant="outline" onClick={zoomIn} className="bg-white">
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+          <Button size="sm" variant="outline" onClick={zoomOut} className="bg-white">
+            <ZoomOut className="h-4 w-4" />
+          </Button>
         </Panel>
       </ReactFlow>
     </div>
