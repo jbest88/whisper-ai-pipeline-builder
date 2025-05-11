@@ -302,7 +302,7 @@ const WorkflowCanvas = ({ setSelectedNode }: WorkflowCanvasProps) => {
             }`}
             onClick={() => setIsMenuOpen((o) => !o)}
           >
-            {isMenuOpen ? <X size={24} /> : <PlusCircle size={24} />}
+            {isMenuOpen ? <X size={24} /> : <PlusCircle size={25} />}
           </Button>
         </div>
 
