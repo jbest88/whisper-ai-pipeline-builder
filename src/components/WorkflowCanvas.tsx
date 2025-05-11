@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ReactFlow,
@@ -29,9 +30,8 @@ import {
 import {
   getNodeIcon,
   getNodeColor,
-  getNodeDescription,
 } from '../utils/nodeUtils';
-import { loadFromStorage, saveToStorage, removeFromStorage } from '../utils/storageUtils';
+import { loadFromStorage, saveToStorage } from '../utils/storageUtils';
 
 /* -------------------------------------------------------------------- */
 /* node renderer map */
@@ -224,34 +224,55 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
       if (!rf || !wrapper.current) return;
 
       const bounds = wrapper.current.getBoundingClientRect();
-      const type  = e.dataTransfer.getData('application/reactflow');
-      const name  = e.dataTransfer.getData('nodeName');
-      if (!type) return;
+      const type = e.dataTransfer.getData('application/reactflow');
+      const name = e.dataTransfer.getData('nodeName');
+      
+      // Check if we got valid data from the drag operation
+      if (!type || !name) {
+        console.warn('Invalid drag data', { type, name });
+        return;
+      }
 
-      const position = rf.screenToFlowPosition({
-        x: e.clientX - bounds.left,
-        y: e.clientY - bounds.top,
-      });
+      try {
+        const position = rf.screenToFlowPosition({
+          x: e.clientX - bounds.left,
+          y: e.clientY - bounds.top,
+        });
 
-      const newNode: Node<NodeData> = {
-        id: `${type}-${Date.now()}`,
-        type: 'serviceNode',
-        position,
-        data: {
-          label: name,
-          type,
-          description: '',
-          color: getNodeColor(type),
-          handles: { source: true, target: true },
-          icon: getNodeIcon(type),
-          updateNodeData,
-          openConfig,
-          edges: [],
-        },
-      };
+        const newNode: Node<NodeData> = {
+          id: `${type}-${Date.now()}`,
+          type: 'serviceNode',
+          position,
+          data: {
+            label: name,
+            type,
+            description: '',
+            color: getNodeColor(type),
+            handles: { source: true, target: true },
+            icon: getNodeIcon(type),
+            updateNodeData,
+            openConfig,
+            edges: [],
+          },
+        };
 
-      setNodes((nds) => nds.concat(newNode));
-      toast({ title: 'Node Added', description: `${name} added to workflow` });
+        console.log('Creating new node:', newNode);
+
+        // Use a functional update to ensure we don't run into stale state issues
+        setNodes(currentNodes => [...currentNodes, newNode]);
+        
+        toast({ 
+          title: 'Node Added', 
+          description: `${name} added to workflow` 
+        });
+      } catch (error) {
+        console.error('Error adding node:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to add node to workflow',
+          variant: 'destructive'
+        });
+      }
     },
     [rf, updateNodeData, openConfig, setNodes, toast],
   );
@@ -275,10 +296,9 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
     (_e: React.MouseEvent, node: Node<NodeData>) => {
       highlight(node.id);
     },
-    [],
+    [highlight],
   );
 
-  // Use a proper type for onPaneClick
   const onPaneClick = useCallback(() => {
     highlight(null);
     setSelectedNode(null);
@@ -294,7 +314,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
     };
     window.addEventListener('keydown', esc);
     return () => window.removeEventListener('keydown', esc);
-  }, [highlight, setSelectedNode]);
+  }, [setSelectedNode]);
 
   /* ------------------------------------------------------------------ */
   /* misc ui helpers                                                    */
@@ -371,7 +391,46 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
           <div className="fixed bottom-0 left-0 right-0 z-[9] bg-white/95 shadow-lg border-t rounded-t-xl">
             <ServiceMenu
               onSelectNode={(type, name) => {
-                /* you can call your handleAddNode here if needed */
+                // Automatically add a node when selected from the menu
+                if (!rf || !wrapper.current) return;
+                
+                try {
+                  // Place it in the center of the visible area
+                  const center = rf.screenToFlowPosition({
+                    x: window.innerWidth / 2,
+                    y: window.innerHeight / 2,
+                  });
+                  
+                  const newNode: Node<NodeData> = {
+                    id: `${type}-${Date.now()}`,
+                    type: 'serviceNode',
+                    position: center,
+                    data: {
+                      label: name,
+                      type,
+                      description: '',
+                      color: getNodeColor(type),
+                      handles: { source: true, target: true },
+                      icon: getNodeIcon(type),
+                      updateNodeData,
+                      openConfig,
+                      edges: [],
+                    },
+                  };
+
+                  setNodes(currentNodes => [...currentNodes, newNode]);
+                  toast({ title: 'Node Added', description: `${name} added to workflow` });
+                  
+                  // Close menu after adding
+                  setIsMenuOpen(false);
+                } catch (error) {
+                  console.error('Error adding node from menu:', error);
+                  toast({
+                    title: 'Error',
+                    description: 'Failed to add node to workflow',
+                    variant: 'destructive'
+                  });
+                }
               }}
               onClose={() => setIsMenuOpen(false)}
             />
