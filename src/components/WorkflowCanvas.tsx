@@ -46,7 +46,7 @@ const initialNodes: Node<NodeData>[] = [
       handles: { source: true, target: false },
       config: {}
     },
-    draggable: true, // Ensure node is draggable
+    draggable: true,
   },
   {
     id: 'output-1',
@@ -60,7 +60,7 @@ const initialNodes: Node<NodeData>[] = [
       handles: { source: false, target: true },
       config: {}
     },
-    draggable: true, // Ensure node is draggable
+    draggable: true,
   },
 ];
 
@@ -135,7 +135,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
           icon: getNodeIcon(type),
           config: {}
         },
-        draggable: true, // Ensure new nodes are draggable
+        draggable: true,
       };
 
       setNodes((nds) => nds.concat(newNode));
@@ -206,7 +206,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
         icon: getNodeIcon(type),
         config: {}
       },
-      draggable: true, // Ensure nodes added from menu are draggable
+      draggable: true,
     };
 
     setNodes((nds) => nds.concat(newNode));
@@ -230,7 +230,9 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
         onDragOver={onDragOver}
         onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
-        draggable={true} // Enable dragging globally
+        draggable={true}
+        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+        nodesDraggable={true} // Explicitly setting nodesDraggable to true
         fitView
         fitViewOptions={{ padding: 0.2 }}
         deleteKeyCode={['Backspace', 'Delete']}

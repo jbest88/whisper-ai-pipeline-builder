@@ -45,7 +45,7 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
   };
 
   return (
-    <div className="relative">
+    <div className="relative nodrag"> {/* Added nodrag class to prevent interfering with dragging */}
       {data.handles?.target && (
         <Handle
           type="target"
@@ -56,7 +56,7 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
       
       <Card className="w-60 shadow-md">
         <CardHeader 
-          className="pb-2 pt-3 px-4 flex flex-row items-center justify-between"
+          className="pb-2 pt-3 px-4 flex flex-row items-center justify-between nodrag"
           style={{ backgroundColor: data.color, color: 'white' }}
         >
           <div className="flex items-center gap-2">
@@ -64,7 +64,7 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
             <span className="font-semibold text-sm">{data.label}</span>
           </div>
         </CardHeader>
-        <CardContent className="p-3">
+        <CardContent className="p-3 nodrag">
           <div className="text-xs text-gray-600">
             {data.description || 'Configure this node to add it to your workflow'}
           </div>
