@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { ExternalLink } from 'lucide-react';
 
 interface NodeConfigPanelProps {
   node: AINode;
@@ -107,6 +107,32 @@ const NodeConfigPanel = ({ node, onClose, setApiKey }: NodeConfigPanelProps) => 
         return 'Pika Labs API Key';
       default:
         return 'API Key';
+    }
+  };
+  
+  // Function to get API creation URL based on node type
+  const getAPIKeyCreationURL = () => {
+    switch (node.data.type) {
+      case 'openai':
+        return 'https://platform.openai.com/api-keys';
+      case 'anthropic':
+        return 'https://console.anthropic.com/settings/keys';
+      case 'elevenlabs':
+        return 'https://elevenlabs.io/subscription';
+      case 'stability':
+        return 'https://platform.stability.ai/account/keys';
+      case 'sora':
+        return 'https://platform.openai.com/api-keys';
+      case 'runway':
+        return 'https://runwayml.com/account/api-keys/';
+      case 'pika':
+        return 'https://pika.art/account/api-keys';
+      case 'perplexity':
+        return 'https://www.perplexity.ai/settings/api';
+      case 'midjourney':
+        return 'https://www.midjourney.com/account/';
+      default:
+        return null;
     }
   };
 
@@ -374,9 +400,21 @@ const NodeConfigPanel = ({ node, onClose, setApiKey }: NodeConfigPanelProps) => 
                     onChange={(e) => setApiKeyInput(e.target.value)}
                     placeholder="Enter your API key"
                   />
-                  <p className="text-xs text-gray-500">
-                    Your API key is required to make requests to the service
-                  </p>
+                  <div className="flex justify-between items-center text-xs">
+                    <p className="text-gray-500">
+                      Your API key is required to make requests to the service
+                    </p>
+                    {getAPIKeyCreationURL() && (
+                      <a 
+                        href={getAPIKeyCreationURL()} 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Get API Key <ExternalLink className="ml-1" size={12} />
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>
