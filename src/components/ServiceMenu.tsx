@@ -115,41 +115,56 @@ const ServiceMenu: React.FC<ServiceMenuProps> = ({ onSelectNode, onClose }) => {
   };
 
   return (
-    <div className="p-4">
-      <div className="flex flex-col">
-        <h3 className="text-lg font-medium mb-4">Add Service to Workflow</h3>
-        
-        <div className="flex flex-wrap gap-4 mb-4">
-          {categories.map((category) => (
-            <div key={category.id} className="flex flex-col items-center">
-              <button
-                onClick={() => handleCategoryClick(category.id)}
-                className={`rounded-full w-16 h-16 flex items-center justify-center shadow-md transition-all ${
-                  selectedCategory === category.id
-                    ? `${category.color} ring-4 ring-offset-2 ring-primary/50`
-                    : `${category.color} hover:scale-110`
-                }`}
+    <div className="p-6 animate-slide-in-bottom">
+      <div className="flex flex-col items-center">
+        {!selectedCategory && (
+          <div className="flex justify-center gap-4 mb-6 overflow-x-auto py-2">
+            {categories.map((category) => (
+              <div 
+                key={category.id} 
+                className="flex flex-col items-center transition-all duration-300 transform hover:scale-110"
+                style={{ transitionDelay: `${categories.indexOf(category) * 50}ms` }}
               >
-                {category.icon}
-              </button>
-              <span className="text-xs mt-2 text-center">{category.title}</span>
-            </div>
-          ))}
-        </div>
-
-        {selectedCategory && (
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto">
-            {nodesByCategory[selectedCategory].map((node) => (
-              <div
-                key={node.type}
-                onClick={() => handleNodeSelect(node.type, node.name)}
-                className="bg-white p-4 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-primary cursor-pointer transition-colors"
-              >
-                <h4 className="font-medium">{node.name}</h4>
-                <p className="text-sm text-gray-500">{node.description}</p>
+                <button
+                  onClick={() => handleCategoryClick(category.id)}
+                  className={`rounded-full w-14 h-14 flex items-center justify-center shadow-lg ${category.color} hover:shadow-xl transition-all duration-300 transform`}
+                  aria-label={category.title}
+                >
+                  {category.icon}
+                </button>
+                <span className="text-xs mt-2 text-center">{category.title}</span>
               </div>
             ))}
           </div>
+        )}
+
+        {selectedCategory && (
+          <>
+            <div className="mb-4 flex items-center">
+              <button 
+                onClick={() => setSelectedCategory(null)}
+                className="text-primary font-medium flex items-center gap-1"
+              >
+                <span className="text-xl">←</span> Back to categories
+              </button>
+              <h4 className="text-lg font-medium ml-4">
+                {categories.find(cat => cat.id === selectedCategory)?.title}
+              </h4>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full max-h-64 overflow-y-auto">
+              {nodesByCategory[selectedCategory].map((node) => (
+                <div
+                  key={node.type}
+                  onClick={() => handleNodeSelect(node.type, node.name)}
+                  className="bg-white/90 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-primary cursor-pointer transition-colors"
+                >
+                  <h4 className="font-medium">{node.name}</h4>
+                  <p className="text-sm text-gray-500">{node.description}</p>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

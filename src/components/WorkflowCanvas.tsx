@@ -1,4 +1,3 @@
-
 import { useCallback, useRef, useState } from 'react';
 import {
   ReactFlow,
@@ -10,12 +9,9 @@ import {
   useEdgesState,
   addEdge,
   Connection,
-  Handle,
-  Position,
+  Node,
   useReactFlow,
   NodeTypes,
-  EdgeTypes,
-  Node,
 } from '@xyflow/react';
 import { useToast } from '@/components/ui/use-toast';
 import '@xyflow/react/dist/style.css';
@@ -232,8 +228,8 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
         fitView
         fitViewOptions={{ padding: 0.2 }}
         deleteKeyCode={['Backspace', 'Delete']}
-        minZoom={0.05} // Set minimum zoom level to allow zooming out further
-        maxZoom={2}    // Set maximum zoom level
+        minZoom={0.05}
+        maxZoom={2}
       >
         <Background />
         <Controls />
@@ -261,20 +257,22 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
           </Button>
         </Panel>
         
-        {/* Add Node Button */}
-        <div className="absolute bottom-4 right-4 z-10">
+        {/* Add Node Button - Mac style */}
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-10">
           <Button
             size="icon"
-            className={`rounded-full shadow-lg p-3 transition-colors ${isMenuOpen ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-primary/90'}`}
+            className={`rounded-full shadow-lg h-14 w-14 transition-all duration-300 ${
+              isMenuOpen ? 'bg-red-500 hover:bg-red-600 rotate-45' : 'bg-primary hover:bg-primary/90'
+            }`}
             onClick={toggleMenu}
           >
             {isMenuOpen ? <X size={24} /> : <PlusCircle size={24} />}
           </Button>
         </div>
 
-        {/* Service Menu */}
+        {/* Service Menu - Mac style animation */}
         {isMenuOpen && (
-          <div className="absolute bottom-0 left-0 right-0 z-10 bg-white/95 shadow-lg border-t border-gray-200 transition-all duration-300 ease-in-out">
+          <div className="fixed bottom-0 left-0 right-0 z-[9] bg-white/95 shadow-lg border-t border-gray-200 rounded-t-xl animate-slide-in-bottom">
             <ServiceMenu onSelectNode={handleAddNode} onClose={toggleMenu} />
           </div>
         )}
