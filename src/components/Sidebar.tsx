@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -104,8 +103,14 @@ const Sidebar = () => {
     }
     
     const query = searchQuery.toLowerCase();
-    const filtered = nodeCategories.map(category => {
-      // Filter nodes in each category
+    
+    // First check if any category titles match the search query
+    const categoriesMatchingTitle = nodeCategories.filter(category => 
+      category.title.toLowerCase().includes(query)
+    );
+    
+    // Then filter nodes in each category
+    const categoriesWithMatchingNodes = nodeCategories.map(category => {
       const filteredNodes = category.nodes.filter(node => 
         node.name.toLowerCase().includes(query) || 
         node.description.toLowerCase().includes(query) ||
@@ -119,11 +124,33 @@ const Sidebar = () => {
       };
     }).filter(category => category.nodes.length > 0);
     
-    setFilteredCategories(filtered);
+    // Combine categories matching by title (keeping all their nodes) with categories having matching nodes
+    let combinedCategories: NodeCategory[] = [];
     
-    // Expand categories that have matching nodes
-    if (filtered.length > 0) {
-      setExpandedCategories(filtered.map(c => c.title));
+    // Add categories that match by title (with all their nodes)
+    categoriesMatchingTitle.forEach(categoryByTitle => {
+      // Find the original category with all its nodes
+      const originalCategory = nodeCategories.find(c => c.title === categoryByTitle.title);
+      if (originalCategory) {
+        // Only add if not already in the combined list
+        if (!combinedCategories.some(c => c.title === originalCategory.title)) {
+          combinedCategories.push(originalCategory);
+        }
+      }
+    });
+    
+    // Add categories with matching nodes that aren't already included
+    categoriesWithMatchingNodes.forEach(categoryWithNodes => {
+      if (!combinedCategories.some(c => c.title === categoryWithNodes.title)) {
+        combinedCategories.push(categoryWithNodes);
+      }
+    });
+    
+    setFilteredCategories(combinedCategories);
+    
+    // Expand categories that have matches
+    if (combinedCategories.length > 0) {
+      setExpandedCategories(combinedCategories.map(c => c.title));
     }
   }, [searchQuery]);
 
