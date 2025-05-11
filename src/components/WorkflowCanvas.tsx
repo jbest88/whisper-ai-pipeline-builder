@@ -132,23 +132,59 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
       
       // Generate mock response based on input type
       let response;
+      let responseType: 'text' | 'image' | 'code' | 'audio' | 'video' = 'text';
+      let responseFormat = '';
+      
       if (inputType === 'text') {
-        response = `AI response to: "${input}"\n\nThis is a simulated response from the OpenAI model. In a real implementation, this would be the actual response from the API call using the provided API key.`;
+        // Detect if the prompt is asking for code, image, etc.
+        const inputText = input as string;
+        if (inputText.toLowerCase().includes('code') || 
+            inputText.toLowerCase().includes('function') || 
+            inputText.toLowerCase().includes('program')) {
+          responseType = 'code';
+          responseFormat = 'javascript';
+          response = `// Here is a sample function based on your request\n\nfunction processData(input) {\n  // Process the input\n  const result = input.map(item => item * 2);\n  \n  // Return the processed data\n  return result;\n}\n\n// Example usage\nconst data = [1, 2, 3, 4];\nconsole.log(processData(data));`;
+        } else if (inputText.toLowerCase().includes('image') || 
+                   inputText.toLowerCase().includes('picture') || 
+                   inputText.toLowerCase().includes('photo')) {
+          responseType = 'image';
+          response = 'https://images.unsplash.com/photo-1649972904349-6e44c42644a7?auto=format&fit=crop&w=500&h=400';
+        } else if (inputText.toLowerCase().includes('video') || 
+                   inputText.toLowerCase().includes('movie') || 
+                   inputText.toLowerCase().includes('clip')) {
+          responseType = 'video';
+          response = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+        } else if (inputText.toLowerCase().includes('audio') || 
+                   inputText.toLowerCase().includes('sound') || 
+                   inputText.toLowerCase().includes('music')) {
+          responseType = 'audio';
+          response = 'https://cdn.freesound.org/previews/581/581873_4921277-lq.mp3';
+        } else {
+          responseType = 'text';
+          response = `AI response to: "${input}"\n\nThis is a simulated response from the OpenAI model. In a real implementation, this would be the actual response from the API call using the provided API key.`;
+        }
       } else {
         const fileInput = input as File;
         response = `AI processed ${inputType} file: ${fileInput.name} (${fileInput.size} bytes)\n\nThis is a simulated response for processing a ${inputType} file with OpenAI.`;
+        responseType = 'text';
       }
       
       // Update node with response
       updateNodeData(nodeId, { 
         processing: false, 
-        response: response 
+        response: response,
+        responseType: responseType,
+        responseFormat: responseFormat
       });
       
       // Find connected output nodes and update them
       const connectedEdges = edges.filter(edge => edge.source === nodeId);
       connectedEdges.forEach(edge => {
-        updateNodeData(edge.target, { response });
+        updateNodeData(edge.target, { 
+          response: response,
+          responseType: responseType,
+          responseFormat: responseFormat
+        });
       });
       
       toast({
@@ -194,13 +230,19 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
       // Update node with response
       updateNodeData(nodeId, { 
         processing: false, 
-        response: response 
+        response: response,
+        responseType: 'text',
+        responseFormat: ''
       });
       
       // Find connected output nodes and update them
       const connectedEdges = edges.filter(edge => edge.source === nodeId);
       connectedEdges.forEach(edge => {
-        updateNodeData(edge.target, { response });
+        updateNodeData(edge.target, { 
+          response: response,
+          responseType: 'text',
+          responseFormat: ''
+        });
       });
       
       toast({
@@ -240,20 +282,27 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
       // Simulate API call with timeout
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Generate mock response
+      // Generate mock audio URL response
       const textInput = typeof input === 'string' ? input : 'Transcribed text';
-      const response = `Text-to-Speech complete for: "${textInput.substring(0, 50)}${textInput.length > 50 ? '...' : ''}"\n\nThis is a simulated TTS response. In a real implementation, an audio file would be generated.`;
+      // Using a sample audio file URL for demonstration
+      const audioResponse = 'https://cdn.freesound.org/previews/581/581873_4921277-lq.mp3';
       
       // Update node with response
       updateNodeData(nodeId, { 
         processing: false, 
-        response: response 
+        response: audioResponse,
+        responseType: 'audio',
+        responseFormat: 'audio/mp3'
       });
       
       // Find connected output nodes and update them
       const connectedEdges = edges.filter(edge => edge.source === nodeId);
       connectedEdges.forEach(edge => {
-        updateNodeData(edge.target, { response });
+        updateNodeData(edge.target, { 
+          response: audioResponse,
+          responseType: 'audio',
+          responseFormat: 'audio/mp3'
+        });
       });
       
       toast({

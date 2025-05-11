@@ -14,7 +14,9 @@ export interface NodeData {
   config?: Record<string, any>;
   input?: string | File | null;
   inputType?: 'text' | 'file' | 'audio' | 'image' | 'video';
-  response?: string;
+  response?: string | Blob;
+  responseType?: 'text' | 'image' | 'audio' | 'video' | 'code';
+  responseFormat?: string; // For code syntax highlighting or MIME types
   error?: string;
   processing?: boolean;
   updateNodeData?: (nodeId: string, data: Record<string, any>) => void;

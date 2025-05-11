@@ -12,6 +12,9 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { FileAudio, FileVideo, FileImage, FileCode, FileText } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface ServiceNodeProps {
   data: AINode['data'];
@@ -23,7 +26,10 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'text' | 'file'>('text');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showPreview, setShowPreview] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   
   // Determine appropriate input type based on connected nodes
   useEffect(() => {
@@ -75,6 +81,21 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
     }
   };
 
+  const getResponseTypeIcon = () => {
+    switch (data.responseType) {
+      case 'audio':
+        return <FileAudio className="h-4 w-4" />;
+      case 'video':
+        return <FileVideo className="h-4 w-4" />;
+      case 'image':
+        return <FileImage className="h-4 w-4" />;
+      case 'code':
+        return <FileCode className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
@@ -113,6 +134,90 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
         
         setIsProcessing(false);
       }
+    }
+  };
+
+  // Render different types of content based on responseType
+  const renderContentByType = () => {
+    if (!data.response) return null;
+
+    switch (data.responseType) {
+      case 'image':
+        if (showPreview) {
+          const imageUrl = typeof data.response === 'string' 
+            ? data.response 
+            : URL.createObjectURL(data.response as Blob);
+          return (
+            <div className="flex flex-col items-center">
+              <img 
+                src={imageUrl} 
+                alt="Generated image"
+                className="max-h-28 max-w-full object-contain rounded"
+              />
+            </div>
+          );
+        }
+        return <div className="text-xs text-green-600">Image generated</div>;
+        
+      case 'audio':
+        if (showPreview) {
+          const audioUrl = typeof data.response === 'string'
+            ? data.response
+            : URL.createObjectURL(data.response as Blob);
+          return (
+            <div className="flex flex-col items-center">
+              <audio 
+                ref={audioRef}
+                controls
+                className="w-full h-8 mt-1"
+                src={audioUrl}
+              />
+            </div>
+          );
+        }
+        return <div className="text-xs text-green-600">Audio generated</div>;
+        
+      case 'video':
+        if (showPreview) {
+          const videoUrl = typeof data.response === 'string'
+            ? data.response
+            : URL.createObjectURL(data.response as Blob);
+          return (
+            <div className="flex flex-col items-center">
+              <video
+                ref={videoRef}
+                controls
+                className="max-h-28 max-w-full rounded"
+                src={videoUrl}
+              />
+            </div>
+          );
+        }
+        return <div className="text-xs text-green-600">Video generated</div>;
+        
+      case 'code':
+        if (showPreview) {
+          return (
+            <div className="w-full">
+              <pre className="text-xs bg-gray-100 p-1 rounded overflow-x-auto">
+                <code>{typeof data.response === 'string' ? data.response : 'Code snippet'}</code>
+              </pre>
+            </div>
+          );
+        }
+        return <div className="text-xs text-green-600">Code generated</div>;
+        
+      default:
+        // Default text display
+        return (
+          <div className="text-xs max-h-32 overflow-y-auto">
+            <div className="whitespace-pre-wrap">
+              {typeof data.response === 'string' 
+                ? data.response 
+                : 'Response received'}
+            </div>
+          </div>
+        );
     }
   };
 
@@ -243,11 +348,32 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
         );
       case 'output':
         return (
-          <div className="text-xs max-h-32 overflow-y-auto">
+          <div className="flex flex-col w-full space-y-2">
+            {data.response && data.responseType && (
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1">
+                  {getResponseTypeIcon()}
+                  <span className="capitalize">{data.responseType}</span>
+                </div>
+                {data.responseType !== 'text' && (
+                  <div className="flex items-center gap-1">
+                    <Label htmlFor={`preview-${id}`} className="text-xs">Preview</Label>
+                    <Switch 
+                      id={`preview-${id}`} 
+                      checked={showPreview} 
+                      onCheckedChange={setShowPreview} 
+                      size="sm"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
             {data.response ? (
-              <div className="whitespace-pre-wrap">{data.response}</div>
+              renderContentByType()
             ) : (
-              <div>{data.description || 'Waiting for response...'}</div>
+              <div className="text-xs">
+                {data.description || 'Waiting for response...'}
+              </div>
             )}
           </div>
         );
