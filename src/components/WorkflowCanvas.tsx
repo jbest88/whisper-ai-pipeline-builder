@@ -48,6 +48,70 @@ interface WorkflowCanvasProps {
 }
 
 /* -------------------------------------------------------------------- */
+/* helper for localStorage */
+/* -------------------------------------------------------------------- */
+const saveToLocalStorage = (key: string, data: any) => {
+  try {
+    // For large objects, we'll compress the data by removing unnecessary properties
+    if (key === 'workflow_nodes') {
+      // Create a simplified version of the nodes to store
+      const simplifiedNodes = data.map((node: any) => ({
+        id: node.id,
+        type: node.type,
+        position: node.position,
+        data: {
+          label: node.data.label,
+          type: node.data.type,
+          description: node.data.description,
+          color: node.data.color,
+          handles: node.data.handles,
+          config: node.data.config,
+          input: node.data.input,
+          inputType: node.data.inputType,
+          response: node.data.response,
+          responseType: node.data.responseType,
+          responseFormat: node.data.responseFormat,
+          error: node.data.error,
+          processing: node.data.processing,
+          useResponseAsContext: node.data.useResponseAsContext,
+        },
+        // Keep other essential properties
+        parentId: node.parentId,
+        selected: node.selected,
+        style: node.style,
+      }));
+      
+      localStorage.setItem(key, JSON.stringify(simplifiedNodes));
+      return;
+    }
+    
+    // Regular storage for other items
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (error) {
+    console.error(`Error saving to localStorage (${key}):`, error);
+    // Fallback: Try to store with even less data if possible
+    if (key === 'workflow_nodes') {
+      try {
+        const minimalNodes = data.map((node: any) => ({
+          id: node.id,
+          type: node.type,
+          position: node.position,
+          data: {
+            label: node.data.label,
+            type: node.data.type,
+            color: node.data.color,
+            handles: node.data.handles,
+          }
+        }));
+        localStorage.setItem(key, JSON.stringify(minimalNodes));
+      } catch (fallbackError) {
+        console.error('Even fallback storage failed:', fallbackError);
+      }
+    }
+  }
+};
+
+/* -------------------------------------------------------------------- */
 /* component */
 /* -------------------------------------------------------------------- */
 const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
@@ -119,13 +183,13 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
   // Save nodes and edges to localStorage whenever they change
   useEffect(() => {
     if (nodes.length > 0) {
-      localStorage.setItem('workflow_nodes', JSON.stringify(nodes));
+      saveToLocalStorage('workflow_nodes', nodes);
     }
   }, [nodes]);
 
   useEffect(() => {
     if (edges.length > 0) {
-      localStorage.setItem('workflow_edges', JSON.stringify(edges));
+      saveToLocalStorage('workflow_edges', edges);
     }
   }, [edges]);
 
