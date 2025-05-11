@@ -1,4 +1,3 @@
-
 import { useCallback, useRef, useState, useEffect } from 'react';
 import {
   ReactFlow,
@@ -45,7 +44,8 @@ const initialNodes: Node<NodeData>[] = [
       description: 'Enter your prompt here',
       color: '#4338ca',
       handles: { source: true, target: false },
-      config: {}
+      config: {},
+      useResponseAsContext: false
     },
     draggable: true,
   },
@@ -324,18 +324,37 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
     }
   }, [apiKey, edges, updateNodeData, toast, setIsProcessing]);
 
-  // Initialize nodes with updateNodeData function
+  // Initialize nodes with updateNodeData function and connection info
   useEffect(() => {
     setNodes((nds) =>
-      nds.map((node) => ({
-        ...node,
-        data: {
-          ...node.data,
-          updateNodeData,
-          edges: edges.filter(e => e.source === node.id || e.target === node.id),
-          nodes: nds, // Pass all nodes to each node so they can reference other nodes' data
-        },
-      }))
+      nds.map((node) => {
+        // Find any response nodes that are connected as inputs to this node
+        let connectedResponseNodes: Node<NodeData>[] = [];
+        
+        if (node.data.type === 'input') {
+          // Find edges where this input node is the target
+          const incomingEdges = edges.filter(edge => edge.target === node.id);
+          
+          // For each incoming edge, check if the source is a response node
+          incomingEdges.forEach(edge => {
+            const sourceNode = nds.find(n => n.id === edge.source);
+            if (sourceNode && sourceNode.data.type === 'output') {
+              connectedResponseNodes.push(sourceNode);
+            }
+          });
+        }
+        
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            updateNodeData,
+            edges: edges.filter(e => e.source === node.id || e.target === node.id),
+            nodes: nds, // Pass all nodes to each node so they can reference other nodes' data
+            connectedResponseNodes: connectedResponseNodes.length > 0 ? connectedResponseNodes : undefined
+          },
+        };
+      })
     );
   }, [updateNodeData, edges, setNodes]);
 
@@ -368,6 +387,11 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
       const targetNode = nodes.find(n => n.id === params.target);
       
       if (sourceNode && targetNode) {
+        // Special case when connecting a response node to an input node
+        if (sourceNode.data.type === 'output' && targetNode.data.type === 'input') {
+          // This will trigger useEffect above to detect the connection
+        }
+        
         // If source is input and target is OpenAI, make sure they're compatible
         if (sourceNode.data.type === 'input' && targetNode.data.type === 'openai') {
           toast({

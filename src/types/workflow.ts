@@ -22,6 +22,7 @@ export interface NodeData {
   updateNodeData?: (nodeId: string, data: Record<string, any>) => void;
   edges?: Edge[];
   nodes?: Node<NodeData>[];
+  useResponseAsContext?: boolean; // New field to track if response should be used as context
   [key: string]: unknown; // Add index signature to satisfy Record<string, unknown>
 }
 
