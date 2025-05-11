@@ -1,3 +1,4 @@
+
 import { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -152,7 +153,12 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
     }
   };
 
-  const openConfig = () => data.openConfig?.(id);
+  // Fix: Ensure openConfig is properly typed and doesn't call an empty object
+  const openConfig = () => {
+    if (typeof data.openConfig === 'function') {
+      data.openConfig(id);
+    }
+  };
 
   const triggerFileUpload = () => fileInputRef.current?.click();
 
@@ -169,22 +175,24 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
       ?.filter((e) => e.source === id)
       .map((e) => e.target) || [];
 
-    targets.forEach((tid) =>
-      data.updateNodeData?.(tid, {
-        input: selectedTab === 'text' ? inputValue : selectedFile,
-        inputType:
-          selectedTab === 'text'
-            ? 'text'
-            : selectedFile?.type.includes('audio')
-            ? 'audio'
-            : selectedFile?.type.includes('video')
-            ? 'video'
-            : selectedFile?.type.includes('image')
-            ? 'image'
-            : 'file',
-        processing: true,
-      })
-    );
+    targets.forEach((tid) => {
+      if (typeof data.updateNodeData === 'function') {
+        data.updateNodeData(tid, {
+          input: selectedTab === 'text' ? inputValue : selectedFile,
+          inputType:
+            selectedTab === 'text'
+              ? 'text'
+              : selectedFile?.type.includes('audio')
+              ? 'audio'
+              : selectedFile?.type.includes('video')
+              ? 'video'
+              : selectedFile?.type.includes('image')
+              ? 'image'
+              : 'file',
+          processing: true,
+        });
+      }
+    });
     setIsProcessing(false);
   };
 

@@ -20,9 +20,10 @@ export interface NodeData {
   error?: string;
   processing?: boolean;
   updateNodeData?: (nodeId: string, data: Record<string, any>) => void;
+  openConfig?: (nodeId: string) => void; // Properly type the openConfig prop
   edges?: Edge[];
   nodes?: Node<NodeData>[];
-  useResponseAsContext?: boolean; // New field to track if response should be used as context
+  useResponseAsContext?: boolean; // Field to track if response should be used as context
   [key: string]: unknown; // Add index signature to satisfy Record<string, unknown>
 }
 

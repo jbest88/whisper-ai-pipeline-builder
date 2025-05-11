@@ -12,7 +12,7 @@ import {
   Connection,
   Node,
   NodeTypes,
-  OnPaneClick,
+  // Remove the incorrect OnPaneClick import
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -252,10 +252,11 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
     [highlight],
   );
 
-  const onPaneClick: OnPaneClick = () => {
+  // Use a proper type for onPaneClick
+  const onPaneClick = useCallback(() => {
     highlight(null);
     setSelectedNode(null);               // close config panel
-  };
+  }, [highlight, setSelectedNode]);
 
   /* esc key to clear selection */
   useEffect(() => {
