@@ -1,3 +1,4 @@
+
 import { useCallback, useRef, useState } from 'react';
 import {
   ReactFlow,
@@ -44,7 +45,8 @@ const initialNodes: Node<NodeData>[] = [
       color: '#4338ca',
       handles: { source: true, target: false },
       config: {}
-    }
+    },
+    draggable: true, // Ensure node is draggable
   },
   {
     id: 'output-1',
@@ -57,7 +59,8 @@ const initialNodes: Node<NodeData>[] = [
       color: '#4338ca',
       handles: { source: false, target: true },
       config: {}
-    }
+    },
+    draggable: true, // Ensure node is draggable
   },
 ];
 
@@ -132,6 +135,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
           icon: getNodeIcon(type),
           config: {}
         },
+        draggable: true, // Ensure new nodes are draggable
       };
 
       setNodes((nds) => nds.concat(newNode));
@@ -202,6 +206,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
         icon: getNodeIcon(type),
         config: {}
       },
+      draggable: true, // Ensure nodes added from menu are draggable
     };
 
     setNodes((nds) => nds.concat(newNode));
@@ -225,6 +230,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
         onDragOver={onDragOver}
         onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
+        draggable={true} // Enable dragging globally
         fitView
         fitViewOptions={{ padding: 0.2 }}
         deleteKeyCode={['Backspace', 'Delete']}
