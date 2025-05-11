@@ -12,6 +12,12 @@ export interface NodeData {
   };
   icon?: JSX.Element;
   config?: Record<string, any>;
+  input?: string;
+  response?: string;
+  error?: string;
+  processing?: boolean;
+  updateNodeData?: (nodeId: string, data: Record<string, any>) => void;
+  edges?: Edge[];
   [key: string]: unknown; // Add index signature to satisfy Record<string, unknown>
 }
 

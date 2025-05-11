@@ -13,6 +13,7 @@ import {
   Node,
   useReactFlow,
   NodeTypes,
+  Edge,
 } from '@xyflow/react';
 import { useToast } from '@/components/ui/use-toast';
 import '@xyflow/react/dist/style.css';
@@ -21,7 +22,7 @@ import { Trash, ZoomIn, ZoomOut, PlusCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ServiceMenu from './ServiceMenu';
 import ServiceNode from './nodes/ServiceNode';
-import { getNodeIcon, getNodeColor } from '../utils/nodeUtils';
+import { getNodeIcon, getNodeColor, getNodeDescription } from '../utils/nodeUtils';
 
 const nodeTypes: NodeTypes = {
   serviceNode: ServiceNode,
@@ -41,7 +42,7 @@ const initialNodes: Node<NodeData>[] = [
     data: { 
       label: 'User Input',
       type: 'input',
-      description: 'Start your workflow here',
+      description: 'Enter your prompt here',
       color: '#4338ca',
       handles: { source: true, target: false },
       config: {}
@@ -55,7 +56,7 @@ const initialNodes: Node<NodeData>[] = [
     data: { 
       label: 'Response',
       type: 'output',
-      description: 'Display results to the user',
+      description: 'AI response will appear here',
       color: '#4338ca',
       handles: { source: false, target: true },
       config: {}
@@ -74,6 +75,100 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
   const reactFlowInstance = useReactFlow();
   const [reactFlowInst, setReactFlowInst] = useState<any>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Function to update node data for workflow processing
+  const updateNodeData = useCallback((nodeId: string, newData: Record<string, any>) => {
+    setNodes((nds) => 
+      nds.map((node) => {
+        if (node.id === nodeId) {
+          // Update this node with new data
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              ...newData,
+              updateNodeData, // Pass the function so nodes can communicate
+              edges: edges.filter(e => e.source === node.id || e.target === node.id),
+            },
+          };
+        }
+        return node;
+      })
+    );
+
+    // If data includes a user input that needs to be sent to the API
+    const node = nodes.find(n => n.id === nodeId);
+    if (node?.data.type === 'openai' && newData.input && !node.data.response) {
+      processAINode(nodeId, newData.input);
+    }
+  }, [nodes, edges, setNodes, apiKey]);
+
+  // Mock API processing for OpenAI node
+  const processAINode = useCallback(async (nodeId: string, input: string) => {
+    if (!apiKey) {
+      toast({
+        title: "API Key Missing",
+        description: "Please configure OpenAI API key in the node settings",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    
+    // Update the node to show processing state
+    updateNodeData(nodeId, { processing: true });
+    
+    try {
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Generate mock response
+      const response = `AI response to: "${input}"\n\nThis is a simulated response from the OpenAI model. In a real implementation, this would be the actual response from the API call using the provided API key.`;
+      
+      // Update node with response
+      updateNodeData(nodeId, { 
+        processing: false, 
+        response: response 
+      });
+      
+      // Find connected output nodes and update them
+      const connectedEdges = edges.filter(edge => edge.source === nodeId);
+      connectedEdges.forEach(edge => {
+        updateNodeData(edge.target, { response });
+      });
+      
+      toast({
+        title: "Processing Complete",
+        description: "AI has generated a response"
+      });
+    } catch (error) {
+      console.error('Error processing AI node:', error);
+      toast({
+        title: "Processing Error",
+        description: "Failed to process with AI",
+        variant: "destructive"
+      });
+      updateNodeData(nodeId, { processing: false, error: "Failed to process" });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [apiKey, edges, updateNodeData, toast]);
+
+  // Initialize nodes with updateNodeData function
+  useCallback(() => {
+    setNodes((nds) =>
+      nds.map((node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          updateNodeData,
+          edges: edges.filter(e => e.source === node.id || e.target === node.id),
+        },
+      }))
+    );
+  }, [updateNodeData, edges]);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -88,14 +183,43 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
       }
       
       // Add the new edge
-      setEdges((eds) => addEdge({ ...params, animated: true }, eds));
+      const newEdge = { ...params, animated: true, id: `e-${params.source}-${params.target}` };
+      setEdges((eds) => addEdge(newEdge, eds));
       
-      toast({
-        title: "Connection Created",
-        description: "The nodes have been successfully connected"
-      });
+      // Update source and target nodes with edge information
+      const sourceNode = nodes.find(n => n.id === params.source);
+      const targetNode = nodes.find(n => n.id === params.target);
+      
+      if (sourceNode && targetNode) {
+        // If source is input and target is OpenAI, make sure they're compatible
+        if (sourceNode.data.type === 'input' && targetNode.data.type === 'openai') {
+          toast({
+            title: "Connection Created",
+            description: "Input node connected to OpenAI. Enter a prompt and click Send."
+          });
+        }
+        // If source is OpenAI and target is output, make sure they're compatible
+        else if (sourceNode.data.type === 'openai' && targetNode.data.type === 'output') {
+          toast({
+            title: "Connection Created",
+            description: "OpenAI node connected to Response node. Results will display there."
+          });
+        }
+      }
+      
+      // Update nodes with new edge info
+      setNodes((nds) =>
+        nds.map((node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            updateNodeData,
+            edges: [...edges, newEdge].filter(e => e.source === node.id || e.target === node.id),
+          },
+        }))
+      );
     },
-    [setEdges, toast]
+    [setEdges, toast, nodes, edges, updateNodeData]
   );
 
   const onDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
@@ -200,11 +324,13 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
       data: {
         label: nodeName,
         type: type,
-        description: '',
+        description: getNodeDescription(type),
         color: color,
         handles: { source: true, target: true },
         icon: getNodeIcon(type),
-        config: {}
+        config: {},
+        updateNodeData,
+        edges: []
       },
       draggable: true,
     };
@@ -232,7 +358,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey, setApiKey }: WorkflowCanvasPr
         nodeTypes={nodeTypes}
         draggable={true}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-        nodesDraggable={true} // Explicitly setting nodesDraggable to true
+        nodesDraggable={true}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         deleteKeyCode={['Backspace', 'Delete']}

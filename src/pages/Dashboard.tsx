@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import WorkflowCanvas from '../components/WorkflowCanvas';
 import Sidebar from '../components/Sidebar';
 import NodeConfigPanel from '../components/NodeConfigPanel';
@@ -11,21 +11,43 @@ const Dashboard = () => {
   const [selectedNode, setSelectedNode] = useState<AINode | null>(null);
   const { toast } = useToast();
   const [apiKey, setApiKey] = useState('');
+  const [isWorkflowRunning, setIsWorkflowRunning] = useState(false);
+  
+  // Effect to load saved API key from localStorage
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem('openai_api_key');
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+    }
+  }, []);
+  
+  // Save API key to localStorage when it changes
+  useEffect(() => {
+    if (apiKey) {
+      localStorage.setItem('openai_api_key', apiKey);
+    }
+  }, [apiKey]);
   
   const handleRunWorkflow = () => {
     if (!apiKey) {
       toast({
         title: "API Key Required",
-        description: "Please add at least one API key in the node configuration panel.",
+        description: "Please add an OpenAI API key in the node configuration panel.",
         variant: "destructive"
       });
       return;
     }
     
+    setIsWorkflowRunning(true);
     toast({
-      title: "Workflow Executing",
-      description: "Your AI workflow is now running. Results will appear in the response nodes."
+      title: "Workflow Ready",
+      description: "Enter a prompt in the input node and click 'Send to AI'"
     });
+    
+    // Simulate workflow completion after a delay
+    setTimeout(() => {
+      setIsWorkflowRunning(false);
+    }, 1000);
   };
 
   return (
@@ -42,8 +64,12 @@ const Dashboard = () => {
             <Button variant="outline" onClick={() => toast({ title: "Workflow Saved", description: "Your workflow has been saved successfully" })}>
               Save
             </Button>
-            <Button onClick={handleRunWorkflow}>
-              Run Workflow
+            <Button 
+              onClick={handleRunWorkflow} 
+              disabled={isWorkflowRunning}
+              className={isWorkflowRunning ? 'animate-pulse' : ''}
+            >
+              {isWorkflowRunning ? 'Running...' : 'Run Workflow'}
             </Button>
           </div>
         </header>
