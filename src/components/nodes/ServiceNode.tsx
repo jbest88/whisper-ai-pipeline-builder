@@ -1,4 +1,3 @@
-
 import { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -362,7 +361,7 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
                       id={`preview-${id}`} 
                       checked={showPreview} 
                       onCheckedChange={setShowPreview} 
-                      size="sm"
+                      className="scale-75"
                     />
                   </div>
                 )}
