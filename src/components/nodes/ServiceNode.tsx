@@ -428,7 +428,6 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
   };
 
   return (
-    // Removed root `nodrag` so the entire node remains draggable
     <div className="relative" data-type={data.type}>
       {data.handles?.target && (
         <Handle
@@ -439,7 +438,7 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
       )}
       <Card className="w-60 shadow-md">
         <CardHeader
-          className="pb-2 pt-3 px-4 flex items-center justify-between nodrag"
+          className="pb-2 pt-3 px-4 flex items-center justify-between"
           style={{ backgroundColor: data.color, color: 'white' }}
         >
           <div className="flex items-center gap-2">
@@ -447,7 +446,7 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
             <span className="font-semibold text-sm">{data.label}</span>
           </div>
         </CardHeader>
-        <CardContent className="p-3 nodrag">
+        <CardContent className="p-3">
           {renderNodeContent()}
           {/* other UI bits… */}
         </CardContent>
