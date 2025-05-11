@@ -114,6 +114,13 @@ const ServiceMenu: React.FC<ServiceMenuProps> = ({ onSelectNode, onClose }) => {
     onClose();
   };
 
+  // Add drag start handler for nodes
+  const onDragStart = (event: React.DragEvent<HTMLDivElement>, nodeType: string, nodeName: string) => {
+    event.dataTransfer.setData('application/reactflow', nodeType);
+    event.dataTransfer.setData('nodeName', nodeName);
+    event.dataTransfer.effectAllowed = 'move';
+  };
+
   return (
     <div className="p-6 animate-slide-in-bottom">
       <div className="flex flex-col items-center">
@@ -156,8 +163,10 @@ const ServiceMenu: React.FC<ServiceMenuProps> = ({ onSelectNode, onClose }) => {
               {nodesByCategory[selectedCategory].map((node) => (
                 <div
                   key={node.type}
+                  draggable
+                  onDragStart={(e) => onDragStart(e, node.type, node.name)}
                   onClick={() => handleNodeSelect(node.type, node.name)}
-                  className="bg-white/90 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-primary cursor-pointer transition-colors"
+                  className="bg-white/90 p-4 rounded-lg border border-gray-200 hover:bg-gray-50 hover:border-primary cursor-grab transition-colors"
                 >
                   <h4 className="font-medium">{node.name}</h4>
                   <p className="text-sm text-gray-500">{node.description}</p>
