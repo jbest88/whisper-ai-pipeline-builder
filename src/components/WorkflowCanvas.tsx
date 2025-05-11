@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -11,6 +11,7 @@ import {
   Connection,
   Node,
   NodeTypes,
+  OnPaneClick,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -32,17 +33,23 @@ import {
   getNodeDescription,
 } from '../utils/nodeUtils';
 
-/* ─────────────────── node renderer map ─────────────────── */
+/* -------------------------------------------------------------------- */
+/* node renderer map */
+/* -------------------------------------------------------------------- */
 const nodeTypes: NodeTypes = { serviceNode: ServiceNode };
 
-/* ─────────────────── props ─────────────────────────────── */
+/* -------------------------------------------------------------------- */
+/* props */
+/* -------------------------------------------------------------------- */
 interface WorkflowCanvasProps {
-  setSelectedNode: (node: AINode | null) => void;   // used only by gear button
+  setSelectedNode: (node: AINode | null) => void;
   apiKey: string;
-  setApiKey: (key: string) => void;
+  setApiKey: (k: string) => void;
 }
 
-/* ─────────────────── initial nodes ─────────────────────── */
+/* -------------------------------------------------------------------- */
+/* initial data */
+/* -------------------------------------------------------------------- */
 const initialNodes: Node<NodeData>[] = [
   {
     id: 'input-1',
@@ -72,31 +79,32 @@ const initialNodes: Node<NodeData>[] = [
   },
 ];
 
-/* ─────────────────── component ─────────────────────────── */
-const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
-  const wrapper = useRef<HTMLDivElement>(null);
+/* -------------------------------------------------------------------- */
+/* component */
+/* -------------------------------------------------------------------- */
+const WorkflowCanvas = ({ setSelectedNode }: WorkflowCanvasProps) => {
+  const wrapper           = useRef<HTMLDivElement>(null);
+  const [rf, setRf]       = useState<any>(null);
 
-  /* state hooks */
+  /* nodes / edges */
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>(initialNodes);
-  const [edges, setEdges, onEdgesChange]   = useEdgesState<WorkflowEdge>([]);
-  const [rfInstance, setRfInstance]        = useState<any>(null);
-  const [isMenuOpen, setIsMenuOpen]        = useState(false);
-  const [isProcessing, setIsProcessing]    = useState(false);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<WorkflowEdge>([]);
+
+  /* ui flags */
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const { toast } = useToast();
 
-  /* ───────── openConfig injected into each node ────────── */
+  /* ------------------------------------------------------------------ */
+  /* helpers injected into every node                                   */
+  /* ------------------------------------------------------------------ */
   const openConfig = (nodeId: string) => {
     const n = nodes.find((x) => x.id === nodeId);
     if (n) setSelectedNode(n as AINode);
   };
 
-  /* ───────── updateNodeData (unchanged business logic) ───
-     NOTE: to keep the sample short I truncated the long
-     processAINode / Whisper / ElevenLabs mocks you had.
-     Paste them back if needed – no change required.        */
   const updateNodeData = useCallback(
-    (nodeId: string, newData: Record<string, any>) => {
+    (nodeId: string, newData: Record<string, any>) =>
       setNodes((nds) =>
         nds.map((n) =>
           n.id === nodeId
@@ -113,12 +121,11 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
               }
             : n,
         ),
-      );
-    },
+      ),
     [edges, setNodes],
   );
 
-  /* ───────── inject helpers into every node on edge / node change ─── */
+  /* refresh helper refs in nodes */
   useEffect(() => {
     setNodes((nds) =>
       nds.map((n) => ({
@@ -132,15 +139,19 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
         },
       })),
     );
-  }, [edges, setNodes, updateNodeData]);
+  }, [edges, setNodes]);
 
-  /* ───────── connect handler (no change) ─────────────────────────── */
+  /* ------------------------------------------------------------------ */
+  /* connect handler (minimal)                                          */
+  /* ------------------------------------------------------------------ */
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true }, eds)),
     [setEdges],
   );
 
-  /* ───────── drag-over & drop (unchanged) ─────────────────────────── */
+  /* ------------------------------------------------------------------ */
+  /* drag / drop                                                         */
+  /* ------------------------------------------------------------------ */
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
@@ -149,15 +160,14 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      if (!rfInstance || !wrapper.current) return;
+      if (!rf || !wrapper.current) return;
 
       const bounds = wrapper.current.getBoundingClientRect();
-      const type   = e.dataTransfer.getData('application/reactflow');
-      const name   = e.dataTransfer.getData('nodeName');
-
+      const type  = e.dataTransfer.getData('application/reactflow');
+      const name  = e.dataTransfer.getData('nodeName');
       if (!type) return;
 
-      const position = rfInstance.screenToFlowPosition({
+      const position = rf.screenToFlowPosition({
         x: e.clientX - bounds.left,
         y: e.clientY - bounds.top,
       });
@@ -183,29 +193,61 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
       setNodes((nds) => nds.concat(newNode));
       toast({ title: 'Node Added', description: `${name} added to workflow` });
     },
-    [rfInstance, updateNodeData, openConfig, setNodes, toast],
+    [rf, updateNodeData, openConfig, setNodes, toast],
   );
 
-  /* ───────── node click: ONLY select, no config ───────────────────── */
+  /* ------------------------------------------------------------------ */
+  /* select / deselect logic                                            */
+  /* ------------------------------------------------------------------ */
+  const highlight = (id: string | null) =>
+    setNodes((nds) =>
+      nds.map((n) => ({
+        ...n,
+        selected: n.id === id,
+        style:
+          n.id === id
+            ? { border: '2px solid #4f46e5', boxShadow: '0 0 0 2px #c7d2fe' }
+            : { border: '1px solid transparent' },
+      })),
+    );
+
   const onNodeClick = useCallback(
     (_e: React.MouseEvent, node: Node<NodeData>) => {
-      setNodes((nds) =>
-        nds.map((n) => ({ ...n, selected: n.id === node.id })),
-      );
+      highlight(node.id);
     },
-    [setNodes],
+    [highlight],
   );
 
-  /* ───────── helper UI actions (zoom / delete) ────────────────────── */
+  const onPaneClick: OnPaneClick = () => {
+    highlight(null);
+    setSelectedNode(null);               // close config panel
+  };
+
+  /* esc key to clear selection */
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        highlight(null);
+        setSelectedNode(null);
+      }
+    };
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, [highlight, setSelectedNode]);
+
+  /* ------------------------------------------------------------------ */
+  /* misc ui helpers                                                    */
+  /* ------------------------------------------------------------------ */
   const deleteSelected = () => {
     setNodes((nds) => nds.filter((n) => !n.selected));
     toast({ title: 'Nodes Deleted', description: 'Selected nodes removed' });
   };
+  const zoomIn  = () => rf?.zoomIn();
+  const zoomOut = () => rf?.zoomOut({ maxZoom: 0.05 });
 
-  const zoomIn  = () => rfInstance?.zoomIn();
-  const zoomOut = () => rfInstance?.zoomOut({ maxZoom: 0.05 });
-
-  /* ───────── render ──────────────────────────────────────────────── */
+  /* ------------------------------------------------------------------ */
+  /* render                                                             */
+  /* ------------------------------------------------------------------ */
   return (
     <div className="h-full w-full" ref={wrapper}>
       <ReactFlow
@@ -215,10 +257,11 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onInit={setRfInstance}
+        onInit={setRf}
         onDragOver={onDragOver}
         onDrop={onDrop}
         onNodeClick={onNodeClick}
+        onPaneClick={onPaneClick}        {/* ← click outside to deselect */}
         nodesDraggable
         fitView
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
@@ -232,9 +275,9 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
 
         <Panel position="top-right">
           <div className="bg-white shadow rounded p-3 text-xs space-y-1">
-            <p>• Click to select (gear to configure)</p>
-            <p>• Drag handles to connect</p>
-            <p>• Backspace/Delete removes</p>
+            <p>• Click node = highlight</p>
+            <p>• Gear icon = configure</p>
+            <p>• Esc / click empty = clear</p>
           </div>
         </Panel>
 
@@ -250,7 +293,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
           </Button>
         </Panel>
 
-        {/* floating add-node button & ServiceMenu (unchanged) */}
+        {/* floating add-node button + menu */}
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-10">
           <Button
             size="icon"
@@ -265,7 +308,12 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
 
         {isMenuOpen && (
           <div className="fixed bottom-0 left-0 right-0 z-[9] bg-white/95 shadow-lg border-t rounded-t-xl">
-            <ServiceMenu onSelectNode={(t, n) => {/* you can reuse handleAddNode here */}} onClose={() => setIsMenuOpen(false)} />
+            <ServiceMenu
+              onSelectNode={(type, name) => {
+                /* you can call your handleAddNode here if needed */
+              }}
+              onClose={() => setIsMenuOpen(false)}
+            />
           </div>
         )}
       </ReactFlow>
