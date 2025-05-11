@@ -1,10 +1,10 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { FaRobot, FaBrain, FaImage, FaVolumeUp, FaPen, FaDatabase } from 'react-icons/fa';
-import { MdTranslate } from 'react-icons/md';
-import { GiCrystalBall } from 'react-icons/gi';
-import { Film, PanelLeftClose, PanelRightClose } from 'lucide-react';
+import { Film, PanelLeftClose, PanelRightClose, Search } from 'lucide-react';
 
 type NodeCategory = {
   title: string;
@@ -91,6 +91,39 @@ const nodeCategories: NodeCategory[] = [
 const Sidebar = () => {
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['Language Models']);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredCategories, setFilteredCategories] = useState<NodeCategory[]>(nodeCategories);
+  
+  // Filter nodes based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredCategories(nodeCategories);
+      return;
+    }
+    
+    const query = searchQuery.toLowerCase();
+    const filtered = nodeCategories.map(category => {
+      // Filter nodes in each category
+      const filteredNodes = category.nodes.filter(node => 
+        node.name.toLowerCase().includes(query) || 
+        node.description.toLowerCase().includes(query) ||
+        node.type.toLowerCase().includes(query)
+      );
+      
+      // Return category with filtered nodes
+      return {
+        ...category,
+        nodes: filteredNodes
+      };
+    }).filter(category => category.nodes.length > 0);
+    
+    setFilteredCategories(filtered);
+    
+    // Expand categories that have matching nodes
+    if (filtered.length > 0) {
+      setExpandedCategories(filtered.map(c => c.title));
+    }
+  }, [searchQuery]);
 
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => 
@@ -110,6 +143,10 @@ const Sidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
   return (
     <div className="relative h-full">
       <div 
@@ -125,40 +162,58 @@ const Sidebar = () => {
             </h2>
             <p className="text-xs text-gray-500 mt-1">Drag and drop services to the canvas</p>
           </div>
+          
+          <div className="px-2 pt-3">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+              <Input
+                placeholder="Search services..."
+                value={searchQuery}
+                onChange={handleSearchChange}
+                className="pl-9 text-sm w-full"
+              />
+            </div>
+          </div>
 
           <div className="flex-1 overflow-y-auto p-2">
-            {nodeCategories.map((category) => (
-              <div key={category.title} className="mb-2">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-between text-left p-3 h-auto"
-                  onClick={() => toggleCategory(category.title)}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className={`p-1.5 rounded ${category.color}`}>
-                      {category.icon}
-                    </span>
-                    <span>{category.title}</span>
-                  </div>
-                  <span className="text-xs">{expandedCategories.includes(category.title) ? '▼' : '►'}</span>
-                </Button>
-
-                <div className={cn("pl-4 pr-2 mt-1 space-y-1.5", 
-                     !expandedCategories.includes(category.title) && "hidden")}>
-                  {category.nodes.map((node) => (
-                    <div
-                      key={node.type}
-                      draggable
-                      onDragStart={(e) => onDragStart(e, node.type, node.name)}
-                      className="bg-white p-2 rounded border border-gray-200 cursor-grab hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="font-medium text-sm">{node.name}</div>
-                      <div className="text-xs text-gray-500">{node.description}</div>
+            {filteredCategories.length > 0 ? (
+              filteredCategories.map((category) => (
+                <div key={category.title} className="mb-2">
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between text-left p-3 h-auto"
+                    onClick={() => toggleCategory(category.title)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`p-1.5 rounded ${category.color}`}>
+                        {category.icon}
+                      </span>
+                      <span>{category.title}</span>
                     </div>
-                  ))}
+                    <span className="text-xs">{expandedCategories.includes(category.title) ? '▼' : '►'}</span>
+                  </Button>
+
+                  <div className={cn("pl-4 pr-2 mt-1 space-y-1.5", 
+                       !expandedCategories.includes(category.title) && "hidden")}>
+                    {category.nodes.map((node) => (
+                      <div
+                        key={node.type}
+                        draggable
+                        onDragStart={(e) => onDragStart(e, node.type, node.name)}
+                        className="bg-white p-2 rounded border border-gray-200 cursor-grab hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="font-medium text-sm">{node.name}</div>
+                        <div className="text-xs text-gray-500">{node.description}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-4 text-gray-500 text-sm">
+                No services match your search
               </div>
-            ))}
+            )}
           </div>
           
           <div className="p-3 border-t border-gray-200 bg-gray-50">
