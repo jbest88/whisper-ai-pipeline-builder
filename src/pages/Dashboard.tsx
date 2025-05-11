@@ -6,6 +6,7 @@ import NodeConfigPanel from '../components/NodeConfigPanel';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { AINode } from '../types/workflow';
+import { loadFromStorage, saveToStorage, removeFromStorage } from '../utils/storageUtils';
 
 const Dashboard = () => {
   const [selectedNode, setSelectedNode] = useState<AINode | null>(null);
@@ -13,18 +14,18 @@ const Dashboard = () => {
   const [apiKey, setApiKey] = useState('');
   const [isWorkflowRunning, setIsWorkflowRunning] = useState(false);
   
-  // Effect to load saved API key from localStorage
+  // Effect to load saved API key from storage
   useEffect(() => {
-    const savedApiKey = localStorage.getItem('openai_api_key');
+    const savedApiKey = loadFromStorage('openai_api_key');
     if (savedApiKey) {
       setApiKey(savedApiKey);
     }
   }, []);
   
-  // Save API key to localStorage when it changes
+  // Save API key to storage when it changes
   useEffect(() => {
     if (apiKey) {
-      localStorage.setItem('openai_api_key', apiKey);
+      saveToStorage('openai_api_key', apiKey);
     }
   }, [apiKey]);
   
@@ -53,14 +54,14 @@ const Dashboard = () => {
   const handleSaveWorkflow = () => {
     toast({
       title: "Workflow Saved",
-      description: "Your workflow has been saved to local storage"
+      description: "Your workflow has been saved to storage"
     });
   };
 
   const handleClearWorkflow = () => {
     if (window.confirm("Are you sure you want to clear the current workflow? This cannot be undone.")) {
-      localStorage.removeItem('workflow_nodes');
-      localStorage.removeItem('workflow_edges');
+      removeFromStorage('workflow_nodes');
+      removeFromStorage('workflow_edges');
       toast({
         title: "Workflow Cleared",
         description: "Your workflow has been cleared. Refresh the page to start with a clean workflow."

@@ -11,7 +11,6 @@ import {
   Connection,
   Node,
   NodeTypes,
-  // Remove the incorrect OnPaneClick import
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -32,6 +31,7 @@ import {
   getNodeColor,
   getNodeDescription,
 } from '../utils/nodeUtils';
+import { loadFromStorage, saveToStorage, removeFromStorage } from '../utils/storageUtils';
 
 /* -------------------------------------------------------------------- */
 /* node renderer map */
@@ -46,70 +46,6 @@ interface WorkflowCanvasProps {
   apiKey: string;
   setApiKey: (k: string) => void;
 }
-
-/* -------------------------------------------------------------------- */
-/* helper for localStorage */
-/* -------------------------------------------------------------------- */
-const saveToLocalStorage = (key: string, data: any) => {
-  try {
-    // For large objects, we'll compress the data by removing unnecessary properties
-    if (key === 'workflow_nodes') {
-      // Create a simplified version of the nodes to store
-      const simplifiedNodes = data.map((node: any) => ({
-        id: node.id,
-        type: node.type,
-        position: node.position,
-        data: {
-          label: node.data.label,
-          type: node.data.type,
-          description: node.data.description,
-          color: node.data.color,
-          handles: node.data.handles,
-          config: node.data.config,
-          input: node.data.input,
-          inputType: node.data.inputType,
-          response: node.data.response,
-          responseType: node.data.responseType,
-          responseFormat: node.data.responseFormat,
-          error: node.data.error,
-          processing: node.data.processing,
-          useResponseAsContext: node.data.useResponseAsContext,
-        },
-        // Keep other essential properties
-        parentId: node.parentId,
-        selected: node.selected,
-        style: node.style,
-      }));
-      
-      localStorage.setItem(key, JSON.stringify(simplifiedNodes));
-      return;
-    }
-    
-    // Regular storage for other items
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch (error) {
-    console.error(`Error saving to localStorage (${key}):`, error);
-    // Fallback: Try to store with even less data if possible
-    if (key === 'workflow_nodes') {
-      try {
-        const minimalNodes = data.map((node: any) => ({
-          id: node.id,
-          type: node.type,
-          position: node.position,
-          data: {
-            label: node.data.label,
-            type: node.data.type,
-            color: node.data.color,
-            handles: node.data.handles,
-          }
-        }));
-        localStorage.setItem(key, JSON.stringify(minimalNodes));
-      } catch (fallbackError) {
-        console.error('Even fallback storage failed:', fallbackError);
-      }
-    }
-  }
-};
 
 /* -------------------------------------------------------------------- */
 /* component */
@@ -127,15 +63,14 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
 
   const { toast } = useToast();
 
-  // Load saved nodes and edges from localStorage on initial render
+  // Load saved nodes and edges from storage on initial render
   useEffect(() => {
     try {
-      const savedNodes = localStorage.getItem('workflow_nodes');
-      const savedEdges = localStorage.getItem('workflow_edges');
+      const savedNodes = loadFromStorage('workflow_nodes');
+      const savedEdges = loadFromStorage('workflow_edges');
       
       if (savedNodes) {
-        const parsedNodes = JSON.parse(savedNodes);
-        setNodes(parsedNodes);
+        setNodes(savedNodes);
       } else {
         // Set default nodes if no saved nodes found
         setNodes([
@@ -167,11 +102,10 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
       }
       
       if (savedEdges) {
-        const parsedEdges = JSON.parse(savedEdges);
-        setEdges(parsedEdges);
+        setEdges(savedEdges);
       }
     } catch (error) {
-      console.error('Error loading workflow from localStorage:', error);
+      console.error('Error loading workflow from storage:', error);
       toast({
         title: 'Error',
         description: 'Could not load saved workflow',
@@ -180,18 +114,41 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
     }
   }, [setNodes, setEdges, toast]);
 
-  // Save nodes and edges to localStorage whenever they change
+  // Save nodes and edges with debounce to prevent excessive storage operations
+  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+  
+  const debouncedSave = useCallback((type: 'nodes' | 'edges', data: any) => {
+    if (saveTimeout) clearTimeout(saveTimeout);
+    
+    const timeout = setTimeout(() => {
+      saveToStorage(`workflow_${type}`, data, { 
+        useSessionFallback: true,
+        showErrors: false 
+      });
+    }, 1000); // 1 second debounce
+    
+    setSaveTimeout(timeout);
+  }, [saveTimeout]);
+  
+  // Save nodes and edges to storage whenever they change
   useEffect(() => {
     if (nodes.length > 0) {
-      saveToLocalStorage('workflow_nodes', nodes);
+      debouncedSave('nodes', nodes);
     }
-  }, [nodes]);
+  }, [nodes, debouncedSave]);
 
   useEffect(() => {
     if (edges.length > 0) {
-      saveToLocalStorage('workflow_edges', edges);
+      debouncedSave('edges', edges);
     }
-  }, [edges]);
+  }, [edges, debouncedSave]);
+
+  // Cleanup timeout
+  useEffect(() => {
+    return () => {
+      if (saveTimeout) clearTimeout(saveTimeout);
+    };
+  }, [saveTimeout]);
 
   /* ------------------------------------------------------------------ */
   /* helpers injected into every node                                   */
@@ -318,14 +275,14 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
     (_e: React.MouseEvent, node: Node<NodeData>) => {
       highlight(node.id);
     },
-    [highlight],
+    [],
   );
 
   // Use a proper type for onPaneClick
   const onPaneClick = useCallback(() => {
     highlight(null);
-    setSelectedNode(null);               // close config panel
-  }, [highlight, setSelectedNode]);
+    setSelectedNode(null);
+  }, [setSelectedNode]);
 
   /* esc key to clear selection */
   useEffect(() => {
