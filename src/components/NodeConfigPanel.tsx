@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,12 +20,17 @@ interface NodeConfigPanelProps {
 const NodeConfigPanel = ({ node, onClose, setApiKey }: NodeConfigPanelProps) => {
   const [nodeName, setNodeName] = useState(node.data.label);
   const [nodeDescription, setNodeDescription] = useState(node.data.description || '');
-  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [apiKeyInput, setApiKeyInput] = useState(node.data.apiKey || '');
   const { toast } = useToast();
-  const [nodeConfig, setNodeConfig] = useState<any>({});
+  const [nodeConfig, setNodeConfig] = useState<any>(node.data.config || {});
   
   // Get node type specific configurations
   useEffect(() => {
+    if (node.data.config) {
+      setNodeConfig(node.data.config);
+      return;
+    }
+    
     switch (node.data.type) {
       case 'openai':
         setNodeConfig({
@@ -69,11 +75,21 @@ const NodeConfigPanel = ({ node, onClose, setApiKey }: NodeConfigPanelProps) => 
       default:
         setNodeConfig({});
     }
-  }, [node.data.type]);
+  }, [node.data.type, node.data.config]);
   
   const handleSave = () => {
-    // Here you would update the node in the ReactFlow state
-    if (apiKeyInput) {
+    // Update the node data
+    if (node.data.updateNodeData) {
+      node.data.updateNodeData(node.id, {
+        label: nodeName,
+        description: nodeDescription,
+        apiKey: apiKeyInput,
+        config: nodeConfig
+      });
+    }
+    
+    // Also update the global API key if it's an OpenAI node
+    if (apiKeyInput && (node.data.type === 'openai' || node.data.type === 'sora')) {
       setApiKey(apiKeyInput);
       toast({
         title: "API Key Saved",

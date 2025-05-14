@@ -1,37 +1,46 @@
 
-import { Node, Edge } from '@xyflow/react';
+import { Edge, Node } from '@xyflow/react';
 
 export interface NodeData {
   label: string;
   type: string;
   description?: string;
   color: string;
-  handles?: {
+  handles: {
     source: boolean;
     target: boolean;
   };
-  icon?: JSX.Element;
-  config?: Record<string, any>;
-  input?: string | File | null;
-  inputType?: 'text' | 'file' | 'audio' | 'image' | 'video';
-  response?: string | Blob;
-  responseType?: 'text' | 'image' | 'audio' | 'video' | 'code';
-  responseFormat?: string; // For code syntax highlighting or MIME types
-  error?: string;
-  processing?: boolean;
+  icon?: React.ReactNode;
   updateNodeData?: (nodeId: string, data: Record<string, any>) => void;
-  openConfig?: (nodeId: string) => void; // Properly type the openConfig prop
-  edges?: Edge[];
-  nodes?: Node<NodeData>[];
-  useResponseAsContext?: boolean; // Field to track if response should be used as context
-  [key: string]: unknown; // Add index signature to satisfy Record<string, unknown>
+  openConfig?: (nodeId: string) => void;
+  edges?: WorkflowEdge[];
+  nodes?: AINode[];
+  input?: string | File;
+  inputType?: 'text' | 'file' | 'audio' | 'video' | 'image';
+  response?: string | Blob | null;
+  responseType?: 'text' | 'code' | 'image' | 'audio' | 'video';
+  processing?: boolean;
+  error?: string;
+  apiKey?: string;
+  config?: {
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    voice?: string;
+    size?: string;
+    style?: string;
+    duration?: string;
+    resolution?: string;
+    frames?: string;
+    mode?: string;
+    [key: string]: any;
+  };
 }
 
-// Define properly typed AINode and WorkflowEdge
 export type AINode = Node<NodeData>;
-export type WorkflowEdge = Edge & {
+
+export interface WorkflowEdge extends Edge {
   animated: boolean;
-  // Make sourceHandle and targetHandle optional explicitly with null as possible value
   sourceHandle?: string | null;
   targetHandle?: string | null;
-};
+}
