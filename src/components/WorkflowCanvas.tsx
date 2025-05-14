@@ -12,6 +12,7 @@ import {
   Connection,
   Node,
   NodeTypes,
+  Edge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -203,11 +204,60 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
   }, [edges, setNodes, updateNodeData, openConfig]);
 
   /* ------------------------------------------------------------------ */
-  /* connect handler (minimal)                                          */
+  /* connect handler (enhanced for debugging and error handling)        */
   /* ------------------------------------------------------------------ */
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true }, eds)),
-    [setEdges],
+    (params: Connection) => {
+      console.log("Connection attempt:", params);
+      if (!params.source || !params.target) {
+        console.error("Invalid connection params:", params);
+        toast({
+          title: "Connection Error",
+          description: "Missing source or target for connection",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Check for duplicate connections
+      const isDuplicate = edges.some(
+        edge => edge.source === params.source && edge.target === params.target
+      );
+      
+      if (isDuplicate) {
+        console.warn("Duplicate connection prevented:", params);
+        toast({
+          title: "Connection Error",
+          description: "A connection already exists between these nodes",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Add the new edge
+      try {
+        const newEdge = {
+          ...params,
+          animated: true,
+          id: `e-${params.source}-${params.target}-${Date.now()}`
+        };
+        console.log("Creating new edge:", newEdge);
+        setEdges(eds => addEdge(newEdge, eds));
+        
+        toast({
+          title: "Connection Created",
+          description: "Nodes connected successfully"
+        });
+      } catch (error) {
+        console.error("Error creating connection:", error);
+        toast({
+          title: "Connection Error",
+          description: "Failed to create connection between nodes",
+          variant: "destructive"
+        });
+      }
+    },
+    [edges, toast, setEdges],
   );
 
   /* ------------------------------------------------------------------ */
@@ -280,7 +330,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
   /* ------------------------------------------------------------------ */
   /* select / deselect logic                                            */
   /* ------------------------------------------------------------------ */
-  const highlight = (id: string | null) =>
+  const highlight = useCallback((id: string | null) =>
     setNodes((nds) =>
       nds.map((n) => ({
         ...n,
@@ -290,7 +340,9 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
             ? { border: '2px solid #4f46e5', boxShadow: '0 0 0 2px #c7d2fe' }
             : { border: '1px solid transparent' },
       })),
-    );
+    ),
+    [setNodes]
+  );
 
   const onNodeClick = useCallback(
     (_e: React.MouseEvent, node: Node<NodeData>) => {
@@ -302,7 +354,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
   const onPaneClick = useCallback(() => {
     highlight(null);
     setSelectedNode(null);
-  }, [setSelectedNode]);
+  }, [setSelectedNode, highlight]);
 
   /* esc key to clear selection */
   useEffect(() => {
@@ -314,7 +366,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
     };
     window.addEventListener('keydown', esc);
     return () => window.removeEventListener('keydown', esc);
-  }, [setSelectedNode]);
+  }, [setSelectedNode, highlight]);
 
   /* ------------------------------------------------------------------ */
   /* misc ui helpers                                                    */
@@ -349,6 +401,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
         deleteKeyCode={['Backspace', 'Delete']}
         minZoom={0.05}
         maxZoom={2}
+        connectOnClick={false}
       >
         <Background />
         <Controls />
@@ -359,6 +412,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
             <p>• Click node = highlight</p>
             <p>• Gear icon = configure</p>
             <p>• Esc / click empty = clear</p>
+            <p>• Connect nodes = drag from handle</p>
           </div>
         </Panel>
 
