@@ -45,7 +45,7 @@ const Dashboard = () => {
       description: "Enter a prompt in the input node and click 'Send to AI'"
     });
     
-    // Simulate workflow completion after a delay
+    // Reset workflow running state after a brief delay to show the animation
     setTimeout(() => {
       setIsWorkflowRunning(false);
     }, 1000);

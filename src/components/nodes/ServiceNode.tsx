@@ -1,3 +1,4 @@
+
 import { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -31,6 +32,7 @@ import {
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/use-toast';
 
 interface ServiceNodeProps {
   data: AINode['data'];
@@ -51,6 +53,7 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showPreview, setShowPreview] = useState(true);
   const [useResponseAsContext, setUseResponseAsContext] = useState(false);
+  const { toast } = useToast();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -169,7 +172,7 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
   /* ------------------------------------------------------------------ */
   /* send input downstream                                               */
   /* ------------------------------------------------------------------ */
-  const handleSend = () => {
+  const handleSend = async () => {
     if (data.type !== 'input') return;
     const valid = selectedTab === 'text' ? inputValue.trim() : selectedFile;
     if (!valid) return;
@@ -179,6 +182,7 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
       ?.filter((e) => e.source === id)
       .map((e) => e.target) || [];
 
+    // First, update all target nodes to show they're processing
     targets.forEach((tid) => {
       if (typeof data.updateNodeData === 'function') {
         data.updateNodeData(tid, {
@@ -197,7 +201,82 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
         });
       }
     });
+
+    // Process each target node
+    for (const tid of targets) {
+      const targetNode = data.nodes?.find((n) => n.id === tid);
+      if (!targetNode) continue;
+
+      try {
+        // Process based on target node type
+        if (targetNode.data.type === 'openai') {
+          await processOpenAINode(targetNode, inputValue);
+        } else if (targetNode.data.type === 'output') {
+          // Pass the input directly to the output node
+          if (typeof data.updateNodeData === 'function') {
+            data.updateNodeData(tid, {
+              response: inputValue,
+              responseType: 'text',
+              processing: false,
+            });
+          }
+        }
+        // Add other node types as needed
+      } catch (error) {
+        console.error(`Error processing node ${tid}:`, error);
+        if (typeof data.updateNodeData === 'function') {
+          data.updateNodeData(tid, {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            processing: false,
+          });
+        }
+        
+        toast({
+          title: "Processing Error",
+          description: error instanceof Error ? error.message : "Failed to process request",
+          variant: "destructive"
+        });
+      }
+    }
+
     setIsProcessing(false);
+  };
+
+  // Process OpenAI node (GPT-4o, etc.)
+  const processOpenAINode = async (node: AINode, prompt: string) => {
+    // Simulate AI processing for now (later this would make an actual API call)
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate processing delay
+    
+    const response = `This is a simulated response from ${node.data.label}.\n\nYou asked: "${prompt}"\n\nIn a real implementation, this would make an API call to OpenAI with your API key.`;
+    
+    // Update the node with the response
+    if (typeof data.updateNodeData === 'function') {
+      data.updateNodeData(node.id, {
+        response,
+        responseType: 'text',
+        processing: false,
+      });
+    }
+    
+    // Find and update any output nodes connected to this node
+    const connectedOutputs = data.edges
+      ?.filter(e => e.source === node.id)
+      .map(e => e.target) || [];
+      
+    connectedOutputs.forEach(outputId => {
+      if (typeof data.updateNodeData === 'function') {
+        data.updateNodeData(outputId, {
+          response,
+          responseType: 'text',
+          processing: false,
+        });
+      }
+    });
+    
+    toast({
+      title: "AI Processing Complete",
+      description: "Response generated successfully",
+    });
   };
 
   /* ------------------------------------------------------------------ */
@@ -315,7 +394,7 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
               disabled={isProcessing || (selectedTab === 'text' ? !inputValue.trim() : !selectedFile)}
               onClick={handleSend}
             >
-              Send to AI
+              {isProcessing ? "Processing..." : "Send to AI"}
             </Button>
           </>
         );
@@ -344,7 +423,24 @@ const ServiceNode = ({ data, id }: ServiceNodeProps) => {
         );
 
       default:
-        return renderPreview() || <p className="text-xs">{data.description || 'Waiting…'}</p>;
+        return (
+          <div className="flex flex-col space-y-2">
+            {data.processing ? (
+              <div className="text-xs text-center py-2">
+                <div className="animate-pulse">Processing...</div>
+              </div>
+            ) : data.response ? (
+              renderPreview()
+            ) : (
+              <p className="text-xs">{data.description || 'Waiting for input…'}</p>
+            )}
+            {data.error && (
+              <div className="text-xs text-red-500 bg-red-50 p-2 rounded">
+                Error: {data.error}
+              </div>
+            )}
+          </div>
+        );
     }
   };
 
