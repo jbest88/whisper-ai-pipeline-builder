@@ -1,6 +1,15 @@
 
+import React, { memo } from 'react';
+import { useToast } from '@/components/ui/use-toast';
+import { Node } from '@xyflow/react';
+import { NodeData } from '../../types/workflow';
+
+// Define the node component
+const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
+  const { toast } = useToast();
+
   // Process OpenAI node (GPT-4o, etc.)
-  const processOpenAINode = async (node: AINode, prompt: string) => {
+  const processOpenAINode = async (node: Node<NodeData>, prompt: string) => {
     // Check if we have API key
     if (!node.data.apiKey) {
       throw new Error('OpenAI API key is required. Please configure the node.');
@@ -40,8 +49,8 @@
       const aiResponse = data.choices[0]?.message?.content || 'No response from OpenAI';
       
       // Update the node with the response
-      if (typeof data.updateNodeData === 'function') {
-        data.updateNodeData(node.id, {
+      if (typeof node.data.updateNodeData === 'function') {
+        node.data.updateNodeData(node.id, {
           response: aiResponse,
           responseType: 'text',
           processing: false,
@@ -54,8 +63,8 @@
         .map(e => e.target) || [];
         
       connectedOutputs.forEach(outputId => {
-        if (typeof data.updateNodeData === 'function') {
-          data.updateNodeData(outputId, {
+        if (typeof node.data.updateNodeData === 'function') {
+          node.data.updateNodeData(outputId, {
             response: aiResponse,
             responseType: 'text',
             processing: false,
@@ -72,3 +81,13 @@
       throw error;
     }
   };
+
+  // Return the component's JSX
+  return (
+    <div>
+      {/* Your node rendering logic here */}
+    </div>
+  );
+});
+
+export default ServiceNode;

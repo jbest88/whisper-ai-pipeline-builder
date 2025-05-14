@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ReactFlow,
@@ -34,30 +33,23 @@ import {
 } from '../utils/nodeUtils';
 import { loadFromStorage, saveToStorage } from '../utils/storageUtils';
 
-/* -------------------------------------------------------------------- */
-/* node renderer map */
-/* -------------------------------------------------------------------- */
-const nodeTypes: NodeTypes = { serviceNode: ServiceNode };
+const nodeTypes: NodeTypes = { 
+  serviceNode: ServiceNode 
+};
 
-/* -------------------------------------------------------------------- */
-/* props */
-/* -------------------------------------------------------------------- */
 interface WorkflowCanvasProps {
   setSelectedNode: (node: AINode | null) => void;
   apiKey: string;
   setApiKey: (k: string) => void;
 }
 
-/* -------------------------------------------------------------------- */
-/* component */
-/* -------------------------------------------------------------------- */
 const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
   const wrapper = useRef<HTMLDivElement>(null);
   const [rf, setRf] = useState<any>(null);
 
   /* nodes / edges */
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<WorkflowEdge>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>[]>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<WorkflowEdge[]>([]);
 
   /* ui flags */
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -243,7 +235,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
         };
         
         console.log("Creating new edge:", newEdge);
-        // Use a proper type assertion to ensure the result is WorkflowEdge[]
+        // Use a proper type assertion
         setEdges(eds => addEdge(newEdge, eds) as WorkflowEdge[]);
         
         toast({

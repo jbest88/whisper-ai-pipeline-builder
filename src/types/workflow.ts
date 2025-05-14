@@ -14,7 +14,7 @@ export interface NodeData {
   updateNodeData?: (nodeId: string, data: Record<string, any>) => void;
   openConfig?: (nodeId: string) => void;
   edges?: WorkflowEdge[];
-  nodes?: AINode[];
+  nodes?: Node<NodeData>[];
   input?: string | File;
   inputType?: 'text' | 'file' | 'audio' | 'video' | 'image';
   response?: string | Blob | null;
@@ -35,6 +35,7 @@ export interface NodeData {
     mode?: string;
     [key: string]: any;
   };
+  [key: string]: any; // Add index signature to satisfy Record<string, unknown>
 }
 
 export type AINode = Node<NodeData>;
