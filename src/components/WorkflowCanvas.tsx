@@ -234,15 +234,16 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
         return;
       }
       
-      // Add the new edge
+      // Add the new edge with explicit type casting to match WorkflowEdge type
       try {
         const newEdge = {
           ...params,
           animated: true,
           id: `e-${params.source}-${params.target}-${Date.now()}`
-        };
+        } as WorkflowEdge;
+        
         console.log("Creating new edge:", newEdge);
-        setEdges(eds => addEdge(newEdge, eds));
+        setEdges(eds => addEdge(newEdge, eds as Edge[]));
         
         toast({
           title: "Connection Created",
