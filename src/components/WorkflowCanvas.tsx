@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ReactFlow,
@@ -48,8 +49,8 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
   const [rf, setRf] = useState<any>(null);
 
   /* nodes / edges */
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<NodeData>[]>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<WorkflowEdge[]>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<WorkflowEdge>([]);
 
   /* ui flags */
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -170,13 +171,13 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
                   updateNodeData,
                   openConfig,
                   edges: edges.filter((e) => e.source === n.id || e.target === n.id),
-                  nodes: nds,
+                  nodes,
                 },
               }
             : n,
         ),
       ),
-    [edges, setNodes, openConfig],
+    [edges, nodes, setNodes, openConfig],
   );
 
   /* refresh helper refs in nodes */
@@ -189,11 +190,11 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
           updateNodeData,
           openConfig,
           edges: edges.filter((e) => e.source === n.id || e.target === n.id),
-          nodes: nds,
+          nodes,
         },
       })),
     );
-  }, [edges, setNodes, updateNodeData, openConfig]);
+  }, [edges, nodes, setNodes, updateNodeData, openConfig]);
 
   /* ------------------------------------------------------------------ */
   /* connect handler (enhanced for debugging and error handling)        */
@@ -235,7 +236,6 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
         };
         
         console.log("Creating new edge:", newEdge);
-        // Use a proper type assertion
         setEdges(eds => addEdge(newEdge, eds) as WorkflowEdge[]);
         
         toast({
@@ -301,8 +301,6 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
         };
 
         console.log('Creating new node:', newNode);
-
-        // Use a functional update to ensure we don't run into stale state issues
         setNodes(currentNodes => [...currentNodes, newNode]);
         
         toast({ 
