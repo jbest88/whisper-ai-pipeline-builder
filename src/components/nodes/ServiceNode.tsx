@@ -117,6 +117,20 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
       // Determine model from node config or use default
       const model = node.data.config?.model || 'gpt-4o';
       
+      // Check for context from previous nodes
+      let messages = [];
+      
+      // If this node has previous context stored, include it
+      if (node.data.context) {
+        console.log("Using stored context:", node.data.context);
+        messages = [...node.data.context];
+      }
+      
+      // Add the current prompt as the latest message
+      messages.push({ role: 'user', content: prompt });
+      
+      console.log("Sending messages to OpenAI:", messages);
+      
       // Make API call to OpenAI
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -126,7 +140,7 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
         },
         body: JSON.stringify({
           model: model,
-          messages: [{ role: 'user', content: prompt }],
+          messages: messages,
           temperature: node.data.config?.temperature || 0.7,
           max_tokens: node.data.config?.maxTokens || 1000
         })
@@ -140,12 +154,16 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
       const data = await response.json();
       const aiResponse = data.choices[0]?.message?.content || 'No response from OpenAI';
       
-      // Update the node with the response
+      // Update conversation context with the assistant's response
+      const updatedContext = [...messages, { role: 'assistant', content: aiResponse }];
+      
+      // Update the node with the response and updated context
       if (typeof node.data.updateNodeData === 'function') {
         node.data.updateNodeData(node.id, {
           response: aiResponse,
           responseType: 'text',
           processing: false,
+          context: updatedContext  // Save the conversation context
         });
       }
       
@@ -172,7 +190,7 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
       const outputNode = node.data.nodes?.find(n => n.id === outputId);
       if (!outputNode) continue;
       
-      console.log(`Propagating response to node ${outputId}`);
+      console.log(`Propagating response to node ${outputId}`, outputNode.data.type);
       
       if (typeof node.data.updateNodeData === 'function') {
         // If it's an output node, just display the response
@@ -185,8 +203,43 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
                   (response.type.startsWith('audio/') ? 'audio' : 'file'))) : 'text'),
             processing: false,
           });
-        } else {
-          // For other node types, update their input
+        } 
+        // If it's an input node, store the response as context but don't overwrite input
+        else if (outputNode.data.type === 'input') {
+          // Just store the previous response as context, but don't overwrite any user input
+          node.data.updateNodeData(outputId, {
+            context: response,  // Store as context for future use
+            processing: false,
+          });
+        }
+        // For language model nodes (like OpenAI), store response as context
+        else if (outputNode.data.type === 'openai' || 
+                outputNode.data.type === 'llm' ||
+                outputNode.data.type === 'anthropic' ||
+                outputNode.data.type === 'gemini') {
+          // If input node comes before this LLM node, the context is already in messages
+          // Just prep the node with context from the previous node
+          let existingContext = outputNode.data.context || [];
+          
+          // If response is a string, add it as context
+          if (typeof response === 'string') {
+            // If there's no existing context, initialize with system message
+            if (existingContext.length === 0) {
+              existingContext = [{ role: 'system', content: 'You are a helpful assistant.' }];
+            }
+            
+            // Add the response as assistant message if it's not already from user input
+            // This handles the case of response node > LLM node
+            existingContext.push({ role: 'assistant', content: response });
+          }
+          
+          node.data.updateNodeData(outputId, {
+            context: existingContext,
+            processing: false,
+          });
+        } 
+        // For all other node types, update their input with the response
+        else {
           node.data.updateNodeData(outputId, {
             input: response,
             inputType: typeof response === 'string' ? 'text' : 
@@ -260,6 +313,15 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
         {data.type === 'output' && data.response && (
           <div className="mt-2 max-h-[200px] overflow-y-auto border border-gray-200 rounded p-2 bg-gray-50 text-gray-800">
             {data.response.toString()}
+          </div>
+        )}
+        
+        {/* Display Context Indicator for LLM Nodes */}
+        {(data.type === 'openai' || data.type === 'llm' || data.type === 'anthropic' || data.type === 'gemini') && data.context && (
+          <div className="mt-2 text-xs text-green-600">
+            {Array.isArray(data.context) ? 
+              `Context available: ${data.context.length} messages` : 
+              'Context available'}
           </div>
         )}
       </div>

@@ -22,6 +22,7 @@ export interface NodeData {
   processing?: boolean;
   error?: string;
   apiKey?: string;
+  context?: any[] | string; // Can be an array of messages or a string context
   config?: {
     model?: string;
     temperature?: number;
