@@ -63,11 +63,15 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
               // Simulate processing for now
               setTimeout(() => {
                 if (typeof data.updateNodeData === 'function') {
+                  const response = `Processed by ${node.data.label}: ${prompt}`;
                   data.updateNodeData(nodeId, {
-                    response: `Processed by ${node.data.label}: ${prompt}`,
+                    response: response,
                     responseType: 'text',
                     processing: false
                   });
+                  
+                  // Propagate the response to any connected nodes
+                  propagateResponseToNextNodes(node, response);
                 }
               }, 2000);
             }
@@ -98,7 +102,6 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
 
   // Process OpenAI node (GPT-4o, etc.)
   const processOpenAINode = async (node: any, prompt: string) => {
-    // Implementation kept from your original code
     // Check if we have API key
     if (!node.data.apiKey) {
       throw new Error('OpenAI API key is required. Please configure the node.');
@@ -146,20 +149,8 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
         });
       }
       
-      // Find and update any output nodes connected to this node
-      const connectedOutputs = node.data.edges
-        ?.filter(e => e.source === node.id)
-        .map(e => e.target) || [];
-        
-      connectedOutputs.forEach(outputId => {
-        if (typeof node.data.updateNodeData === 'function') {
-          node.data.updateNodeData(outputId, {
-            response: aiResponse,
-            responseType: 'text',
-            processing: false,
-          });
-        }
-      });
+      // Propagate the response to any connected nodes
+      propagateResponseToNextNodes(node, aiResponse);
       
       toast({
         title: "AI Processing Complete",
@@ -168,6 +159,44 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
     } catch (error) {
       console.error('OpenAI API Error:', error);
       throw error;
+    }
+  };
+  
+  // Function to propagate the response to the next connected nodes
+  const propagateResponseToNextNodes = (node: any, response: string | Blob) => {
+    const connectedOutputs = node.data.edges
+      ?.filter(e => e.source === node.id)
+      .map(e => e.target) || [];
+      
+    for (const outputId of connectedOutputs) {
+      const outputNode = node.data.nodes?.find(n => n.id === outputId);
+      if (!outputNode) continue;
+      
+      console.log(`Propagating response to node ${outputId}`);
+      
+      if (typeof node.data.updateNodeData === 'function') {
+        // If it's an output node, just display the response
+        if (outputNode.data.type === 'output') {
+          node.data.updateNodeData(outputId, {
+            response: response,
+            responseType: typeof response === 'string' ? 'text' : 
+              (response instanceof Blob ? (response.type.startsWith('image/') ? 'image' : 
+                (response.type.startsWith('video/') ? 'video' : 
+                  (response.type.startsWith('audio/') ? 'audio' : 'file'))) : 'text'),
+            processing: false,
+          });
+        } else {
+          // For other node types, update their input
+          node.data.updateNodeData(outputId, {
+            input: response,
+            inputType: typeof response === 'string' ? 'text' : 
+              (response instanceof Blob ? (response.type.startsWith('image/') ? 'image' : 
+                (response.type.startsWith('video/') ? 'video' : 
+                  (response.type.startsWith('audio/') ? 'audio' : 'file'))) : 'text'),
+            processing: false,
+          });
+        }
+      }
     }
   };
 
