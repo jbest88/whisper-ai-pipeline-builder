@@ -49,7 +49,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
   const [rf, setRf] = useState<any>(null);
 
   /* nodes / edges */
-  const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<AINode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<WorkflowEdge>([]);
 
   /* ui flags */
@@ -152,7 +152,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
     const foundNode = nodes.find((x) => x.id === nodeId);
     if (foundNode) {
       console.log('Setting selected node:', foundNode);
-      setSelectedNode(foundNode as AINode);
+      setSelectedNode(foundNode);
     } else {
       console.error('Node not found:', nodeId);
     }
@@ -283,7 +283,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
           y: e.clientY - bounds.top,
         });
 
-        const newNode: Node<NodeData> = {
+        const newNode: AINode = {
           id: `${type}-${Date.now()}`,
           type: 'serviceNode',
           position,
@@ -447,7 +447,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
                     y: window.innerHeight / 2,
                   });
                   
-                  const newNode: Node<NodeData> = {
+                  const newNode: AINode = {
                     id: `${type}-${Date.now()}`,
                     type: 'serviceNode',
                     position: center,

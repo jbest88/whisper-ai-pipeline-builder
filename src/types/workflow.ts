@@ -14,7 +14,7 @@ export interface NodeData {
   updateNodeData?: (nodeId: string, data: Record<string, any>) => void;
   openConfig?: (nodeId: string) => void;
   edges?: WorkflowEdge[];
-  nodes?: Node<NodeData>[];
+  nodes?: AINode[];
   input?: string | File;
   inputType?: 'text' | 'file' | 'audio' | 'video' | 'image';
   response?: string | Blob | null;
