@@ -117,14 +117,8 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
       // Determine model from node config or use default
       const model = node.data.config?.model || 'gpt-4o';
       
-      // Check for context from previous nodes
-      let messages = [];
-      
-      // If this node has previous context stored, include it
-      if (node.data.context) {
-        console.log("Using stored context:", node.data.context);
-        messages = [...node.data.context];
-      }
+      // Initialize messages array with a system message
+      let messages = [{ role: 'system', content: 'You are a helpful assistant.' }];
       
       // Add the current prompt as the latest message
       messages.push({ role: 'user', content: prompt });
@@ -154,8 +148,11 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
       const data = await response.json();
       const aiResponse = data.choices[0]?.message?.content || 'No response from OpenAI';
       
-      // Update conversation context with the assistant's response
-      const updatedContext = [...messages, { role: 'assistant', content: aiResponse }];
+      // Store only the current conversation pair as context, not the full history
+      const updatedContext = [
+        { role: 'user', content: prompt },
+        { role: 'assistant', content: aiResponse }
+      ];
       
       // Update the node with the response and updated context
       if (typeof node.data.updateNodeData === 'function') {
@@ -163,7 +160,7 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
           response: aiResponse,
           responseType: 'text',
           processing: false,
-          context: updatedContext  // Save the conversation context
+          context: updatedContext  // Store only the latest conversation pair
         });
       }
       
@@ -204,37 +201,38 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
             processing: false,
           });
         } 
-        // If it's an input node, store the response as context but don't overwrite input
-        else if (outputNode.data.type === 'input') {
-          // Just store the previous response as context, but don't overwrite any user input
-          node.data.updateNodeData(outputId, {
-            context: response,  // Store as context for future use
-            processing: false,
-          });
-        }
-        // For language model nodes (like OpenAI), store response as context
+        // For language model nodes (like OpenAI), automatically use the response as input
         else if (outputNode.data.type === 'openai' || 
                 outputNode.data.type === 'llm' ||
                 outputNode.data.type === 'anthropic' ||
                 outputNode.data.type === 'gemini') {
-          // If input node comes before this LLM node, the context is already in messages
-          // Just prep the node with context from the previous node
-          let existingContext = outputNode.data.context || [];
           
-          // If response is a string, add it as context
+          // If the response is a string, set it as the input
           if (typeof response === 'string') {
-            // If there's no existing context, initialize with system message
-            if (existingContext.length === 0) {
-              existingContext = [{ role: 'system', content: 'You are a helpful assistant.' }];
-            }
+            node.data.updateNodeData(outputId, {
+              input: response,
+              inputType: 'text',
+              processing: false,
+              // Don't set context here, it will be created during processing
+            });
             
-            // Add the response as assistant message if it's not already from user input
-            // This handles the case of response node > LLM node
-            existingContext.push({ role: 'assistant', content: response });
+            // Automatically trigger processing for LLM nodes when they receive input
+            setTimeout(() => {
+              // Find the LLM node with updated data
+              const updatedLLMNode = node.data.nodes?.find(n => n.id === outputId);
+              if (!updatedLLMNode) return;
+              
+              // Use processOpenAINode to process the input
+              if (updatedLLMNode.data.type === 'openai' && updatedLLMNode.data.apiKey) {
+                processOpenAINode(updatedLLMNode, response as string);
+              }
+            }, 500); // Small delay to ensure data is updated
           }
-          
+        }
+        // If it's an input node, store the response as input but don't overwrite any user input
+        else if (outputNode.data.type === 'input') {
           node.data.updateNodeData(outputId, {
-            context: existingContext,
+            input: response as string,
             processing: false,
           });
         } 
@@ -316,12 +314,19 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
           </div>
         )}
         
-        {/* Display Context Indicator for LLM Nodes */}
-        {(data.type === 'openai' || data.type === 'llm' || data.type === 'anthropic' || data.type === 'gemini') && data.context && (
-          <div className="mt-2 text-xs text-green-600">
-            {Array.isArray(data.context) ? 
-              `Context available: ${data.context.length} messages` : 
-              'Context available'}
+        {/* Display Input for LLM Nodes */}
+        {(data.type === 'openai' || data.type === 'llm' || data.type === 'anthropic' || data.type === 'gemini') && data.input && (
+          <div className="mt-2 text-xs">
+            <div className="font-medium">Input:</div>
+            <div className="truncate max-w-full">{typeof data.input === 'string' ? data.input : 'Non-text input'}</div>
+          </div>
+        )}
+        
+        {/* Display Response for LLM Nodes */}
+        {(data.type === 'openai' || data.type === 'llm' || data.type === 'anthropic' || data.type === 'gemini') && data.response && (
+          <div className="mt-2 text-xs">
+            <div className="font-medium">Response:</div>
+            <div className="truncate max-h-[100px] overflow-hidden">{data.response.toString().substring(0, 100)}...</div>
           </div>
         )}
       </div>
