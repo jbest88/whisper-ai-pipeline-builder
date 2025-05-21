@@ -1,14 +1,16 @@
 
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { useToast } from '@/components/ui/use-toast';
-import { NodeData } from '../../types/workflow';
-import { FiSettings } from 'react-icons/fi';
+import { NodeData, ExecutionStatus } from '../../types/workflow';
+import { FiSettings, FiInfo } from 'react-icons/fi';
+import { Play, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Define the node component
 const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
   const { toast } = useToast();
+  const [showDetails, setShowDetails] = useState(false);
   
   // Function to process input nodes when user submits a prompt
   const handleSendPrompt = async () => {
@@ -38,7 +40,11 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
       
       // Update the input node to show processing
       if (typeof data.updateNodeData === 'function') {
-        data.updateNodeData(id, { processing: true });
+        data.updateNodeData(id, { 
+          processing: true,
+          executed: true,
+          error: undefined
+        });
       }
       
       // Send the prompt to each connected node
@@ -57,7 +63,8 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
             if (typeof data.updateNodeData === 'function') {
               data.updateNodeData(nodeId, {
                 input: prompt,
-                processing: true
+                processing: true,
+                executed: true
               });
               
               // Simulate processing for now
@@ -67,13 +74,14 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
                   data.updateNodeData(nodeId, {
                     response: response,
                     responseType: 'text',
-                    processing: false
+                    processing: false,
+                    error: undefined
                   });
                   
                   // Propagate the response to any connected nodes
                   propagateResponseToNextNodes(node, response);
                 }
-              }, 2000);
+              }, 1500);
             }
           }
         } catch (error) {
@@ -81,7 +89,8 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
           if (typeof data.updateNodeData === 'function') {
             data.updateNodeData(nodeId, {
               error: error instanceof Error ? error.message : 'Unknown error',
-              processing: false
+              processing: false,
+              executed: true
             });
           }
           
@@ -109,10 +118,7 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
     
     try {
       // Show processing state
-      toast({
-        title: "Processing Request",
-        description: `Sending prompt to ${node.data.label || 'OpenAI'}...`
-      });
+      console.log("Processing OpenAI node:", node.id);
       
       // Determine model from node config or use default
       const model = node.data.config?.model || 'gpt-4o';
@@ -160,17 +166,14 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
           response: aiResponse,
           responseType: 'text',
           processing: false,
+          executed: true,
+          error: undefined,
           context: updatedContext  // Store only the latest conversation pair
         });
       }
       
       // Propagate the response to any connected nodes
       propagateResponseToNextNodes(node, aiResponse);
-      
-      toast({
-        title: "AI Processing Complete",
-        description: "Response generated successfully",
-      });
     } catch (error) {
       console.error('OpenAI API Error:', error);
       throw error;
@@ -199,13 +202,16 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
                 (response.type.startsWith('video/') ? 'video' : 
                   (response.type.startsWith('audio/') ? 'audio' : 'file'))) : 'text'),
             processing: false,
+            executed: true,
+            error: undefined
           });
         } 
         // For language model nodes (like OpenAI), automatically use the response as input
         else if (outputNode.data.type === 'openai' || 
-                outputNode.data.type === 'llm' ||
                 outputNode.data.type === 'anthropic' ||
-                outputNode.data.type === 'gemini') {
+                outputNode.data.type === 'perplexity' ||
+                outputNode.data.type === 'code' ||
+                outputNode.data.type === 'function') {
           
           // If the response is a string, set it as the input
           if (typeof response === 'string') {
@@ -213,6 +219,7 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
               input: response,
               inputType: 'text',
               processing: false,
+              executed: false, // Not executed yet
               // Don't set context here, it will be created during processing
             });
             
@@ -234,6 +241,7 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
           node.data.updateNodeData(outputId, {
             input: response as string,
             processing: false,
+            executed: false
           });
         } 
         // For all other node types, update their input with the response
@@ -245,6 +253,7 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
                 (response.type.startsWith('video/') ? 'video' : 
                   (response.type.startsWith('audio/') ? 'audio' : 'file'))) : 'text'),
             processing: false,
+            executed: false
           });
         }
       }
@@ -254,33 +263,90 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
   // Determine if this node is a source, target, or both
   const hasSourceHandle = data.handles?.source;
   const hasTargetHandle = data.handles?.target;
+  
+  // Get execution status visual indicator
+  const getStatusIndicator = () => {
+    if (data.processing) {
+      return (
+        <div className="absolute top-0 right-0 w-3 h-3 m-1">
+          <div className="w-full h-full bg-blue-500 rounded-full animate-pulse"></div>
+        </div>
+      );
+    } else if (data.executed) {
+      if (data.error) {
+        return (
+          <div className="absolute top-0 right-0 w-3 h-3 m-1">
+            <div className="w-full h-full bg-red-500 rounded-full"></div>
+          </div>
+        );
+      } else {
+        return (
+          <div className="absolute top-0 right-0 w-3 h-3 m-1">
+            <div className="w-full h-full bg-green-500 rounded-full"></div>
+          </div>
+        );
+      }
+    }
+    return null;
+  };
 
   return (
-    <div className="min-w-[180px] min-h-[80px] bg-white rounded-lg shadow-md border border-gray-200 p-4 flex flex-col">
+    <div 
+      className={cn(
+        "min-w-[200px] max-w-[280px] bg-white rounded-md shadow-md border",
+        data.executed && !data.error ? "border-green-300" : 
+        data.error ? "border-red-300" : 
+        data.processing ? "border-blue-300" : "border-gray-200",
+        "flex flex-col relative"
+      )}
+    >
       {/* Node Header */}
-      <div className="flex justify-between items-center mb-2">
+      <div 
+        className={cn(
+          "px-3 py-2 flex justify-between items-center rounded-t-md",
+          data.executed && !data.error ? "bg-green-50" : 
+          data.error ? "bg-red-50" : 
+          data.processing ? "bg-blue-50" : 
+          "bg-gray-50"
+        )}
+        style={{ borderBottom: `2px solid ${data.color}` }}
+      >
         <div className="flex items-center gap-2">
           {data.icon && <span className="text-lg" style={{ color: data.color }}>{data.icon}</span>}
           <h3 className="text-sm font-medium truncate max-w-[120px]">{data.label}</h3>
         </div>
-        {data.openConfig && (
+        <div className="flex items-center">
           <button
-            onClick={() => data.openConfig && data.openConfig(id)}
-            className="text-gray-500 hover:text-gray-700"
+            onClick={() => setShowDetails(!showDetails)}
+            className="text-gray-500 hover:text-gray-700 mr-1"
           >
-            <FiSettings size={14} />
+            <FiInfo size={14} />
           </button>
-        )}
+          {data.openConfig && (
+            <button
+              onClick={() => data.openConfig && data.openConfig(id)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <FiSettings size={14} />
+            </button>
+          )}
+        </div>
+        {getStatusIndicator()}
       </div>
       
       {/* Node Content */}
-      <div className="text-xs text-gray-500 flex-1">
-        {data.description || 'Configure this node'}
+      <div className="p-3 text-xs text-gray-600 flex-1">
+        {!showDetails && !data.error && !data.response && (
+          <div className="text-gray-500 italic">
+            {data.description || 'Configure this node'}
+          </div>
+        )}
         
         {/* Show error if present */}
         {data.error && (
-          <div className="mt-2 text-red-500 text-xs">
-            Error: {data.error}
+          <div className="mt-1 text-red-500 text-xs p-2 bg-red-50 rounded border border-red-200 flex items-start">
+            <AlertCircle className="h-4 w-4 mr-1 flex-shrink-0 mt-0.5" />
+            <div>{data.error}</div>
           </div>
         )}
 
@@ -292,41 +358,84 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
               value={data.input as string || ''}
               onChange={(e) => data.updateNodeData && data.updateNodeData(id, { input: e.target.value })}
               placeholder="Enter your prompt..."
-              className="w-full text-xs p-1.5 border border-gray-300 rounded"
+              className="w-full text-xs p-2 border border-gray-300 rounded"
             />
             <button
               onClick={handleSendPrompt}
               disabled={data.processing}
               className={cn(
-                "w-full mt-1.5 py-1 rounded text-white text-xs",
+                "w-full mt-2 py-1.5 rounded text-white text-xs flex items-center justify-center",
                 data.processing ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
               )}
             >
-              {data.processing ? "Processing..." : "Send to AI"}
+              {data.processing ? (
+                <span className="flex items-center">
+                  <span className="w-3 h-3 bg-white rounded-full animate-bounce mr-2"></span>
+                  Processing...
+                </span>
+              ) : (
+                <>
+                  <Play className="h-3 w-3 mr-1" /> Execute Workflow
+                </>
+              )}
             </button>
+          </div>
+        )}
+
+        {/* Details view for any node */}
+        {showDetails && (
+          <div className="mt-1 text-xs">
+            <div className="font-medium mb-1 text-gray-700">Node Details:</div>
+            <div className="bg-gray-50 p-2 rounded border border-gray-200 space-y-1">
+              <div><span className="font-medium">Type:</span> {data.type}</div>
+              {data.executed && (
+                <div><span className="font-medium">Status:</span> {data.error ? 'Error' : 'Executed'}</div>
+              )}
+              {data.input && (
+                <div className="truncate">
+                  <span className="font-medium">Input:</span> {typeof data.input === 'string' ? data.input.substring(0, 50) + (data.input.length > 50 ? '...' : '') : 'Non-text input'}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {/* Display Response for Output Node */}
         {data.type === 'output' && data.response && (
-          <div className="mt-2 max-h-[200px] overflow-y-auto border border-gray-200 rounded p-2 bg-gray-50 text-gray-800">
-            {data.response.toString()}
+          <div className="mt-2 max-h-[150px] overflow-y-auto border border-gray-200 rounded p-2 bg-gray-50 text-gray-800 text-xs">
+            {typeof data.response === 'string' ? (
+              <pre className="whitespace-pre-wrap">{data.response}</pre>
+            ) : (
+              <span>Binary response received</span>
+            )}
           </div>
         )}
         
-        {/* Display Input for LLM Nodes */}
-        {(data.type === 'openai' || data.type === 'llm' || data.type === 'anthropic' || data.type === 'gemini') && data.input && (
+        {/* Display Summary Response for LLM Nodes */}
+        {(data.type === 'openai' || data.type === 'anthropic' || data.type === 'perplexity') && data.response && !showDetails && (
           <div className="mt-2 text-xs">
-            <div className="font-medium">Input:</div>
-            <div className="truncate max-w-full">{typeof data.input === 'string' ? data.input : 'Non-text input'}</div>
+            <div className="font-medium flex items-center text-green-700">
+              <CheckCircle2 className="h-3 w-3 mr-1" /> Response Generated
+            </div>
+            <div className="truncate text-gray-600 mt-1">
+              {typeof data.response === 'string' ? 
+                `"${data.response.substring(0, 50)}${data.response.length > 50 ? '...' : ''}"` : 
+                'Non-text response'}
+            </div>
           </div>
         )}
         
-        {/* Display Response for LLM Nodes */}
-        {(data.type === 'openai' || data.type === 'llm' || data.type === 'anthropic' || data.type === 'gemini') && data.response && (
+        {/* Display Full Response for LLM Nodes when details shown */}
+        {(data.type === 'openai' || data.type === 'anthropic' || data.type === 'perplexity') && data.response && showDetails && (
           <div className="mt-2 text-xs">
-            <div className="font-medium">Response:</div>
-            <div className="truncate max-h-[100px] overflow-hidden">{data.response.toString().substring(0, 100)}...</div>
+            <div className="font-medium mb-1">Response:</div>
+            <div className="max-h-[150px] overflow-y-auto border border-gray-200 rounded p-2 bg-gray-50">
+              {typeof data.response === 'string' ? (
+                <pre className="whitespace-pre-wrap">{data.response}</pre>
+              ) : (
+                <span>Binary response</span>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -352,8 +461,8 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
       
       {/* Processing Indicator */}
       {data.processing && (
-        <div className="absolute inset-0 bg-black/5 rounded-lg flex items-center justify-center">
-          <div className="w-5 h-5 border-2 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
+        <div className="absolute inset-0 bg-black/5 rounded-md flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
         </div>
       )}
     </div>
