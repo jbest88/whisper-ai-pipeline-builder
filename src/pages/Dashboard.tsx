@@ -185,15 +185,16 @@ const Dashboard = () => {
 
           {/* MAIN CANVAS AREA */}
           <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden">
-            <WorkflowCanvas setSelectedNode={setSelectedNode} apiKey={apiKey} setApiKey={setApiKey} />
-            {selectedNode && (
-              <NodeConfigPanel
-                node={selectedNode}
-                setApiKey={setApiKey}
-                onClose={() => setSelectedNode(null)}
-              />
-            )}
-          </div>
+  <WorkflowCanvas setSelectedNode={setSelectedNode} apiKey={apiKey} setApiKey={setApiKey} />
+  {selectedNode && (
+    <NodeConfigPanel
+      node={selectedNode}
+      setApiKey={setApiKey}
+      onClose={() => setSelectedNode(null)}
+    />
+  )}
+</div>
+
         </div>
       </div>
     </SidebarProvider>

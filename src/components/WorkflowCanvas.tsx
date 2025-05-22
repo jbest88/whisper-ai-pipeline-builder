@@ -374,7 +374,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
   /* render                                                             */
   /* ------------------------------------------------------------------ */
   return (
-    <div className="h-full w-full flex-1 min-w-0" ref={wrapper}>
+    <div className="h-full w-full flex-1 min-w-0 min-h-0" ref={wrapper}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
