@@ -1,4 +1,3 @@
-
 import React, { memo, useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { useToast } from '@/components/ui/use-toast';
@@ -597,7 +596,11 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
             {/* Show context from previous node if this is an intermediate input node */}
             {data.context && (
               <div className="mb-2 text-gray-500 bg-gray-50 p-2 rounded text-xs">
-                {data.context[0]?.content}
+                {typeof data.context === 'string' 
+                  ? data.context 
+                  : (data.context[0] && 'content' in data.context[0]) 
+                    ? data.context[0].content 
+                    : 'Input from previous node'}
               </div>
             )}
             
