@@ -125,11 +125,10 @@ const Dashboard = () => {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen overflow-hidden">
-         <Sidebar className="w-64 flex-shrink-0" />
-
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-          <header className="bg-white border-b border-gray-200 px-6 py-3 flex justify-between items-center">
+      <div className="flex h-screen w-screen overflow-hidden">
+        <Sidebar className="w-64 flex-shrink-0" />
+        <div className="flex flex-1 min-w-0 min-h-0 flex-col overflow-hidden">
+          <header className="bg-white border-b border-gray-200 px-6 py-3 flex justify-between items-center flex-shrink-0">
             <div className="flex items-center">
               <input
                 type="text"
@@ -142,7 +141,6 @@ const Dashboard = () => {
                 <span>Last edited: {new Date().toLocaleDateString()}</span>
               </div>
             </div>
-
             <div className="flex space-x-2">
               {latestExecution && (
                 <div className={`flex items-center px-3 py-1 rounded-full text-xs ${
@@ -182,19 +180,17 @@ const Dashboard = () => {
               </Button>
             </div>
           </header>
-
-          {/* MAIN CANVAS AREA */}
-          <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden">
-  <WorkflowCanvas setSelectedNode={setSelectedNode} apiKey={apiKey} setApiKey={setApiKey} />
-  {selectedNode && (
-    <NodeConfigPanel
-      node={selectedNode}
-      setApiKey={setApiKey}
-      onClose={() => setSelectedNode(null)}
-    />
-  )}
-</div>
-
+          {/* CANVAS & PANEL */}
+          <div className="flex-1 min-w-0 min-h-0 flex overflow-hidden">
+            <WorkflowCanvas setSelectedNode={setSelectedNode} apiKey={apiKey} setApiKey={setApiKey} />
+            {selectedNode && (
+              <NodeConfigPanel
+                node={selectedNode}
+                setApiKey={setApiKey}
+                onClose={() => setSelectedNode(null)}
+              />
+            )}
+          </div>
         </div>
       </div>
     </SidebarProvider>
