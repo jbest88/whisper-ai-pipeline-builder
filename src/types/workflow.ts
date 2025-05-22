@@ -22,7 +22,7 @@ export interface NodeData {
   processing?: boolean;
   error?: string;
   apiKey?: string;
-  context?: any[] | string; // Can be an array of messages or a string context
+  context?: Array<{type?: string, role?: string, content: string}> | string; // Can be an array of messages or a string context
   credentials?: Record<string, string>;
   executed?: boolean;
   config?: {

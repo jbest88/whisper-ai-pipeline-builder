@@ -1,15 +1,33 @@
-import React, { memo, useState } from 'react';
+
+import React, { memo, useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { useToast } from '@/components/ui/use-toast';
 import { NodeData, ExecutionStatus } from '../../types/workflow';
 import { FiSettings, FiInfo } from 'react-icons/fi';
-import { Play, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Play, CheckCircle2, AlertCircle, Forward } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Define the node component
 const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
   const { toast } = useToast();
   const [showDetails, setShowDetails] = useState(false);
+  
+  // Auto-process when receiving input for AI nodes
+  useEffect(() => {
+    // Only run for AI nodes when they receive input and are not already processing
+    if ((data.type === 'openai' || data.type === 'dalle' || data.type === 'gemini') &&
+        data.input && !data.processing && !data.executed) {
+      handleProcessNode();
+    }
+  }, [data.input, data.type]);
+
+  // Auto-propagate responses to connected nodes
+  useEffect(() => {
+    // When a node generates a response, auto-propagate to connected nodes
+    if (data.response && !data.processing && data.executed) {
+      propagateResponseToNextNodes(data, data.response);
+    }
+  }, [data.response, data.processing, data.executed]);
   
   // Function to process input nodes when user submits a prompt
   const handleSendPrompt = async () => {
@@ -46,68 +64,132 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
         });
       }
       
-      // Send the prompt to each connected node
+      // Process each connected node
       const prompt = data.input as string;
-      
-      // Process each connected node based on its type
-      for (const nodeId of connectedNodes) {
-        const node = data.nodes?.find(n => n.id === nodeId);
-        if (!node) continue;
-        
-        try {
-          if (node.data.type === 'openai') {
-            await processOpenAINode(node, prompt);
-          } else if (node.data.type === 'dalle') {
-            await processDALLENode(node, prompt);
-          } else if (node.data.type === 'gemini') {
-            await processGeminiNode(node, prompt);
-          } else {
-            // For other node types
-            if (typeof data.updateNodeData === 'function') {
-              data.updateNodeData(nodeId, {
-                input: prompt,
-                processing: true,
-                executed: true
-              });
-              
-              // Simulate processing for now
-              setTimeout(() => {
-                if (typeof data.updateNodeData === 'function') {
-                  const response = `Processed by ${node.data.label}: ${prompt}`;
-                  data.updateNodeData(nodeId, {
-                    response: response,
-                    responseType: 'text',
-                    processing: false,
-                    error: undefined
-                  });
-                  
-                  // Propagate the response to any connected nodes
-                  propagateResponseToNextNodes(node, response);
-                }
-              }, 1500);
-            }
-          }
-        } catch (error) {
-          console.error(`Error processing node ${nodeId}:`, error);
-          if (typeof data.updateNodeData === 'function') {
-            data.updateNodeData(nodeId, {
-              error: error instanceof Error ? error.message : 'Unknown error',
-              processing: false,
-              executed: true
-            });
-          }
-          
-          toast({
-            title: "Processing Error",
-            description: error instanceof Error ? error.message : 'Unknown error',
-            variant: "destructive"
-          });
-        }
-      }
+      processConnectedNodes(connectedNodes, prompt);
       
       // Update the input node to show processing is complete
       if (typeof data.updateNodeData === 'function') {
         data.updateNodeData(id, { processing: false });
+      }
+    }
+  };
+
+  // Function to process a specific node
+  const handleProcessNode = async () => {
+    if (!data.input) {
+      return;
+    }
+    
+    try {
+      // Update node to show processing
+      if (typeof data.updateNodeData === 'function') {
+        data.updateNodeData(id, { 
+          processing: true,
+          executed: true,
+          error: undefined
+        });
+      }
+      
+      // Process based on node type
+      if (data.type === 'openai') {
+        await processOpenAINode({id, data}, data.input as string);
+      } else if (data.type === 'dalle') {
+        await processDALLENode({id, data}, data.input as string);
+      } else if (data.type === 'gemini') {
+        await processGeminiNode({id, data}, data.input as string);
+      } else {
+        // For other node types
+        if (typeof data.updateNodeData === 'function') {
+          setTimeout(() => {
+            if (typeof data.updateNodeData === 'function') {
+              const response = `Processed by ${data.label}: ${data.input}`;
+              data.updateNodeData(id, {
+                response: response,
+                responseType: 'text',
+                processing: false,
+                error: undefined
+              });
+            }
+          }, 1500);
+        }
+      }
+      
+    } catch (error) {
+      console.error(`Error processing node ${id}:`, error);
+      if (typeof data.updateNodeData === 'function') {
+        data.updateNodeData(id, {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          processing: false,
+          executed: true
+        });
+      }
+      
+      toast({
+        title: "Processing Error",
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Process connected nodes with prompt
+  const processConnectedNodes = async (connectedNodes, prompt) => {
+    for (const nodeId of connectedNodes) {
+      const node = data.nodes?.find(n => n.id === nodeId);
+      if (!node) continue;
+      
+      try {
+        if (node.data.type === 'openai') {
+          await processOpenAINode(node, prompt);
+        } else if (node.data.type === 'dalle') {
+          await processDALLENode(node, prompt);
+        } else if (node.data.type === 'gemini') {
+          await processGeminiNode(node, prompt);
+        } else if (node.data.type === 'input') {
+          // For input nodes in the middle of the workflow, just update their input
+          if (typeof data.updateNodeData === 'function') {
+            data.updateNodeData(nodeId, {
+              input: prompt,
+              inputType: 'text',
+              processing: false,
+              executed: false,
+              // Add context info to show this is from previous node
+              context: [{type: 'context', content: 'Response from previous node:'}]
+            });
+          }
+        } else {
+          // For other node types
+          if (typeof data.updateNodeData === 'function') {
+            data.updateNodeData(nodeId, {
+              input: prompt,
+              processing: true,
+              executed: true
+            });
+            
+            // Simulate processing for now
+            setTimeout(() => {
+              if (typeof data.updateNodeData === 'function') {
+                const response = `Processed by ${node.data.label}: ${prompt}`;
+                data.updateNodeData(nodeId, {
+                  response: response,
+                  responseType: 'text',
+                  processing: false,
+                  error: undefined
+                });
+              }
+            }, 1500);
+          }
+        }
+      } catch (error) {
+        console.error(`Error processing node ${nodeId}:`, error);
+        if (typeof data.updateNodeData === 'function') {
+          data.updateNodeData(nodeId, {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            processing: false,
+            executed: true
+          });
+        }
       }
     }
   };
@@ -174,9 +256,6 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
           context: updatedContext  // Store only the latest conversation pair
         });
       }
-      
-      // Propagate the response to any connected nodes
-      propagateResponseToNextNodes(node, aiResponse);
     } catch (error) {
       console.error('OpenAI API Error:', error);
       throw error;
@@ -352,12 +431,12 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
   
   // Function to propagate the response to the next connected nodes
   const propagateResponseToNextNodes = (node: any, response: string | Blob) => {
-    const connectedOutputs = node.data.edges
+    const connectedOutputs = node.edges
       ?.filter(e => e.source === node.id)
       .map(e => e.target) || [];
       
     for (const outputId of connectedOutputs) {
-      const outputNode = node.data.nodes?.find(n => n.id === outputId);
+      const outputNode = node.nodes?.find(n => n.id === outputId);
       if (!outputNode) continue;
       
       console.log(`Propagating response to node ${outputId}`, outputNode.data.type);
@@ -376,10 +455,12 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
             error: undefined
           });
         } 
-        // For language model nodes (like OpenAI), automatically use the response as input
+        // For language model nodes (like OpenAI), automatically use the response as input and process
         else if (outputNode.data.type === 'openai' || 
                 outputNode.data.type === 'anthropic' ||
                 outputNode.data.type === 'perplexity' ||
+                outputNode.data.type === 'gemini' ||
+                outputNode.data.type === 'dalle' ||
                 outputNode.data.type === 'code' ||
                 outputNode.data.type === 'function') {
           
@@ -390,28 +471,18 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
               inputType: 'text',
               processing: false,
               executed: false, // Not executed yet
-              // Don't set context here, it will be created during processing
             });
-            
-            // Automatically trigger processing for LLM nodes when they receive input
-            setTimeout(() => {
-              // Find the LLM node with updated data
-              const updatedLLMNode = node.data.nodes?.find(n => n.id === outputId);
-              if (!updatedLLMNode) return;
-              
-              // Use processOpenAINode to process the input
-              if (updatedLLMNode.data.type === 'openai' && updatedLLMNode.data.apiKey) {
-                processOpenAINode(updatedLLMNode, response as string);
-              }
-            }, 500); // Small delay to ensure data is updated
+            // Node will auto-process through its useEffect when it receives input
           }
         }
-        // If it's an input node, store the response as input but don't overwrite any user input
+        // If it's an input node, store the response as input but don't auto-process
         else if (outputNode.data.type === 'input') {
           node.data.updateNodeData(outputId, {
-            input: response as string,
+            input: typeof response === 'string' ? response : 'Binary data from previous node',
             processing: false,
-            executed: false
+            executed: false,
+            // Add context info to show this is from previous node
+            context: [{type: 'context', content: 'Response from previous node:'}]
           });
         } 
         // For all other node types, update their input with the response
@@ -523,6 +594,13 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
         {/* Input Field for Input Node */}
         {data.type === 'input' && (
           <div className="mt-2">
+            {/* Show context from previous node if this is an intermediate input node */}
+            {data.context && (
+              <div className="mb-2 text-gray-500 bg-gray-50 p-2 rounded text-xs">
+                {data.context[0]?.content}
+              </div>
+            )}
+            
             <input
               type="text"
               value={data.input as string || ''}
@@ -530,6 +608,8 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
               placeholder="Enter your prompt..."
               className="w-full text-xs p-2 border border-gray-300 rounded"
             />
+            
+            {/* Show button only for starting input nodes or input nodes that need manual forwarding */}
             <button
               onClick={handleSendPrompt}
               disabled={data.processing}
@@ -543,6 +623,10 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
                   <span className="w-3 h-3 bg-white rounded-full animate-bounce mr-2"></span>
                   Processing...
                 </span>
+              ) : data.context ? (
+                <>
+                  <Forward className="h-3 w-3 mr-1" /> Continue Workflow
+                </>
               ) : (
                 <>
                   <Play className="h-3 w-3 mr-1" /> Execute Workflow
