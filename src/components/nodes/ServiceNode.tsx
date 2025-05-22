@@ -442,25 +442,33 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
   
   // Function to propagate the response to the next connected nodes
   const propagateResponseToNextNodes = (node: any, response: string | Blob) => {
+    // Find all connected nodes from the current node
     const connectedOutputs = node.edges
       ?.filter(e => e.source === node.id)
       .map(e => e.target) || [];
+      
+    console.log(`Propagating response from ${node.id} to ${connectedOutputs.length} nodes`);
       
     for (const outputId of connectedOutputs) {
       const outputNode = node.nodes?.find(n => n.id === outputId);
       if (!outputNode) continue;
       
-      console.log(`Propagating response to node ${outputId}`, outputNode.data.type);
+      console.log(`Propagating response to node ${outputId} of type ${outputNode.data.type}`);
       
       if (typeof node.data.updateNodeData === 'function') {
         // If it's an output node, just display the response
         if (outputNode.data.type === 'output') {
+          console.log(`Updating output node ${outputId} with response`);
+          
+          // Determine response type
+          const responseType = typeof response === 'string' ? 'text' : 
+              (response instanceof Blob ? (response.type?.startsWith('image/') ? 'image' : 
+                (response.type?.startsWith('video/') ? 'video' : 
+                  (response.type?.startsWith('audio/') ? 'audio' : 'file'))) : 'text');
+          
           node.data.updateNodeData(outputId, {
             response: response,
-            responseType: typeof response === 'string' ? 'text' : 
-              (response instanceof Blob ? (response.type.startsWith('image/') ? 'image' : 
-                (response.type.startsWith('video/') ? 'video' : 
-                  (response.type.startsWith('audio/') ? 'audio' : 'file'))) : 'text'),
+            responseType: responseType,
             processing: false,
             executed: true,
             error: undefined
@@ -501,9 +509,9 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
           node.data.updateNodeData(outputId, {
             input: response,
             inputType: typeof response === 'string' ? 'text' : 
-              (response instanceof Blob ? (response.type.startsWith('image/') ? 'image' : 
-                (response.type.startsWith('video/') ? 'video' : 
-                  (response.type.startsWith('audio/') ? 'audio' : 'file'))) : 'text'),
+              (response instanceof Blob ? (response.type?.startsWith('image/') ? 'image' : 
+                (response.type?.startsWith('video/') ? 'video' : 
+                  (response.type?.startsWith('audio/') ? 'audio' : 'file'))) : 'text'),
             processing: false,
             executed: false
           });
