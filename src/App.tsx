@@ -10,6 +10,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
+import TestLayout from './pages/TestLayout';
 
 // Create a client
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App: React.FC = () => {
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/test-layout" element={<TestLayout />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
