@@ -153,7 +153,7 @@ const Dashboard = () => {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen bg-slate-100">
+      <div className="flex h-screen overflow-hidden">
         <Sidebar />
         
         <div className="flex flex-col flex-1 overflow-hidden">
@@ -212,7 +212,7 @@ const Dashboard = () => {
           </header>
           
           <div className="flex-1 flex overflow-hidden">
-            <div className="flex-1 relative">
+            <div className="flex-1 w-full">
               <WorkflowCanvas setSelectedNode={setSelectedNode} apiKey={apiKey} setApiKey={setApiKey} />
             </div>
             
