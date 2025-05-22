@@ -126,7 +126,7 @@ const Dashboard = () => {
   return (
     <SidebarProvider>
       <div className="flex h-screen overflow-hidden">
-        <Sidebar />
+         <Sidebar className="w-64 flex-shrink-0" />
 
         <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           <header className="bg-white border-b border-gray-200 px-6 py-3 flex justify-between items-center">
