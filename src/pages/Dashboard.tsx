@@ -212,7 +212,7 @@ const Dashboard = () => {
           </header>
           
           <div className="flex-1 flex overflow-hidden">
-            <div className="flex-1 w-full">
+            <div className="flex-1 min-w-0 w-full">
               <WorkflowCanvas setSelectedNode={setSelectedNode} apiKey={apiKey} setApiKey={setApiKey} />
             </div>
             
