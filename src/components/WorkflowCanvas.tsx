@@ -374,7 +374,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
   /* render                                                             */
   /* ------------------------------------------------------------------ */
   return (
-    <div className="h-full w-full" ref={wrapper}>
+    <div className="h-full w-full flex-1 min-w-0" ref={wrapper}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -394,6 +394,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
         minZoom={0.05}
         maxZoom={2}
         connectOnClick={false}
+        style={{ width: '100%', height: '100%' }}
       >
         <Background />
         <Controls />
