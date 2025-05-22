@@ -1,3 +1,4 @@
+
 import React, { memo, useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { useToast } from '@/components/ui/use-toast';
@@ -155,6 +156,17 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
               executed: false,
               // Add context info to show this is from previous node
               context: [{type: 'context', content: 'Response from previous node:'}]
+            });
+          }
+        } else if (node.data.type === 'output') {
+          // Directly update output nodes with the response
+          if (typeof data.updateNodeData === 'function') {
+            data.updateNodeData(nodeId, {
+              response: prompt,
+              responseType: 'text',
+              processing: false,
+              executed: true,
+              error: undefined
             });
           }
         } else {
