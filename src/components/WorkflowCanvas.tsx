@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ReactFlow,
@@ -34,8 +33,8 @@ import {
 } from '../utils/nodeUtils';
 import { loadFromStorage, saveToStorage } from '../utils/storageUtils';
 
-const nodeTypes: NodeTypes = { 
-  serviceNode: ServiceNode 
+const nodeTypes: NodeTypes = {
+  serviceNode: ServiceNode
 };
 
 interface WorkflowCanvasProps {
@@ -48,11 +47,11 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
   const wrapper = useRef<HTMLDivElement>(null);
   const [rf, setRf] = useState<any>(null);
 
-  /* nodes / edges */
+  // nodes / edges
   const [nodes, setNodes, onNodesChange] = useNodesState<AINode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<WorkflowEdge>([]);
 
-  /* ui flags */
+  // ui flags
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const { toast } = useToast();
@@ -62,7 +61,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
     try {
       const savedNodes = loadFromStorage('workflow_nodes');
       const savedEdges = loadFromStorage('workflow_edges');
-      
+
       if (savedNodes) {
         setNodes(savedNodes);
       } else {
@@ -94,7 +93,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
           },
         ]);
       }
-      
+
       if (savedEdges) {
         setEdges(savedEdges);
       }
@@ -110,20 +109,20 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
 
   // Save nodes and edges with debounce to prevent excessive storage operations
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
-  
+
   const debouncedSave = useCallback((type: 'nodes' | 'edges', data: any) => {
     if (saveTimeout) clearTimeout(saveTimeout);
-    
+
     const timeout = setTimeout(() => {
-      saveToStorage(`workflow_${type}`, data, { 
+      saveToStorage(`workflow_${type}`, data, {
         useSessionFallback: true,
-        showErrors: false 
+        showErrors: false
       });
     }, 1000); // 1 second debounce
-    
+
     setSaveTimeout(timeout);
   }, [saveTimeout]);
-  
+
   // Save nodes and edges to storage whenever they change
   useEffect(() => {
     if (nodes.length > 0) {
@@ -144,17 +143,11 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
     };
   }, [saveTimeout]);
 
-  /* ------------------------------------------------------------------ */
-  /* helpers injected into every node                                   */
-  /* ------------------------------------------------------------------ */
+  // helpers injected into every node
   const openConfig = useCallback((nodeId: string) => {
-    console.log('openConfig called for node:', nodeId);
     const foundNode = nodes.find((x) => x.id === nodeId);
     if (foundNode) {
-      console.log('Setting selected node:', foundNode);
       setSelectedNode(foundNode);
-    } else {
-      console.error('Node not found:', nodeId);
     }
   }, [nodes, setSelectedNode]);
 
@@ -180,7 +173,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
     [edges, nodes, setNodes, openConfig],
   );
 
-  /* refresh helper refs in nodes */
+  // refresh helper refs in nodes
   useEffect(() => {
     setNodes((nds) =>
       nds.map((n) => ({
@@ -196,14 +189,10 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
     );
   }, [edges, nodes, setNodes, updateNodeData, openConfig]);
 
-  /* ------------------------------------------------------------------ */
-  /* connect handler (enhanced for debugging and error handling)        */
-  /* ------------------------------------------------------------------ */
+  // connect handler
   const onConnect = useCallback(
     (params: Connection) => {
-      console.log("Connection attempt:", params);
       if (!params.source || !params.target) {
-        console.error("Invalid connection params:", params);
         toast({
           title: "Connection Error",
           description: "Missing source or target for connection",
@@ -211,14 +200,13 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
         });
         return;
       }
-      
+
       // Check for duplicate connections
       const isDuplicate = edges.some(
         edge => edge.source === params.source && edge.target === params.target
       );
-      
+
       if (isDuplicate) {
-        console.warn("Duplicate connection prevented:", params);
         toast({
           title: "Connection Error",
           description: "A connection already exists between these nodes",
@@ -226,7 +214,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
         });
         return;
       }
-      
+
       // Add the new edge with explicit type casting to match WorkflowEdge type
       try {
         const newEdge: WorkflowEdge = {
@@ -234,16 +222,14 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
           animated: true,
           id: `e-${params.source}-${params.target}-${Date.now()}`
         };
-        
-        console.log("Creating new edge:", newEdge);
+
         setEdges(eds => addEdge(newEdge, eds) as WorkflowEdge[]);
-        
+
         toast({
           title: "Connection Created",
           description: "Nodes connected successfully"
         });
       } catch (error) {
-        console.error("Error creating connection:", error);
         toast({
           title: "Connection Error",
           description: "Failed to create connection between nodes",
@@ -254,9 +240,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
     [edges, toast, setEdges],
   );
 
-  /* ------------------------------------------------------------------ */
-  /* drag / drop                                                         */
-  /* ------------------------------------------------------------------ */
+  // drag/drop
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
@@ -270,12 +254,8 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
       const bounds = wrapper.current.getBoundingClientRect();
       const type = e.dataTransfer.getData('application/reactflow');
       const name = e.dataTransfer.getData('nodeName');
-      
-      // Check if we got valid data from the drag operation
-      if (!type || !name) {
-        console.warn('Invalid drag data', { type, name });
-        return;
-      }
+
+      if (!type || !name) return;
 
       try {
         const position = rf.screenToFlowPosition({
@@ -300,15 +280,13 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
           },
         };
 
-        console.log('Creating new node:', newNode);
         setNodes(currentNodes => [...currentNodes, newNode]);
-        
-        toast({ 
-          title: 'Node Added', 
-          description: `${name} added to workflow` 
+
+        toast({
+          title: 'Node Added',
+          description: `${name} added to workflow`
         });
       } catch (error) {
-        console.error('Error adding node:', error);
         toast({
           title: 'Error',
           description: 'Failed to add node to workflow',
@@ -319,9 +297,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
     [rf, updateNodeData, openConfig, setNodes, toast],
   );
 
-  /* ------------------------------------------------------------------ */
-  /* select / deselect logic                                            */
-  /* ------------------------------------------------------------------ */
+  // select/deselect logic
   const highlight = useCallback((id: string | null) =>
     setNodes((nds) =>
       nds.map((n) => ({
@@ -348,7 +324,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
     setSelectedNode(null);
   }, [setSelectedNode, highlight]);
 
-  /* esc key to clear selection */
+  // esc key to clear selection
   useEffect(() => {
     const esc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -360,9 +336,7 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
     return () => window.removeEventListener('keydown', esc);
   }, [setSelectedNode, highlight]);
 
-  /* ------------------------------------------------------------------ */
-  /* misc ui helpers                                                    */
-  /* ------------------------------------------------------------------ */
+  // misc ui helpers
   const deleteSelected = () => {
     setNodes((nds) => nds.filter((n) => !n.selected));
     toast({ title: 'Nodes Deleted', description: 'Selected nodes removed' });
@@ -370,11 +344,13 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
   const zoomIn  = () => rf?.zoomIn();
   const zoomOut = () => rf?.zoomOut({ maxZoom: 0.05 });
 
-  /* ------------------------------------------------------------------ */
-  /* render                                                             */
-  /* ------------------------------------------------------------------ */
+  // FINAL RENDER (the key: use flex-1 min-w-0 min-h-0 for 100% fill)
   return (
-    <div className="flex-1 min-w-0 min-h-0" style={{ width: '100%', height: '100%' }}>
+    <div
+      ref={wrapper}
+      className="flex-1 min-w-0 min-h-0"
+      style={{ width: '100%', height: '100%' }}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -438,16 +414,13 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
           <div className="fixed bottom-0 left-0 right-0 z-[9] bg-white/95 shadow-lg border-t rounded-t-xl">
             <ServiceMenu
               onSelectNode={(type, name) => {
-                // Automatically add a node when selected from the menu
                 if (!rf || !wrapper.current) return;
-                
                 try {
-                  // Place it in the center of the visible area
                   const center = rf.screenToFlowPosition({
                     x: window.innerWidth / 2,
                     y: window.innerHeight / 2,
                   });
-                  
+
                   const newNode: AINode = {
                     id: `${type}-${Date.now()}`,
                     type: 'serviceNode',
@@ -467,11 +440,9 @@ const WorkflowCanvas = ({ setSelectedNode, apiKey }: WorkflowCanvasProps) => {
 
                   setNodes(currentNodes => [...currentNodes, newNode]);
                   toast({ title: 'Node Added', description: `${name} added to workflow` });
-                  
-                  // Close menu after adding
+
                   setIsMenuOpen(false);
                 } catch (error) {
-                  console.error('Error adding node from menu:', error);
                   toast({
                     title: 'Error',
                     description: 'Failed to add node to workflow',
