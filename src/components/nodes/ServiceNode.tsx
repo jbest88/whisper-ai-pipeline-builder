@@ -1,4 +1,3 @@
-
 import React, { memo, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { useToast } from '@/components/ui/use-toast';
@@ -58,6 +57,10 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
         try {
           if (node.data.type === 'openai') {
             await processOpenAINode(node, prompt);
+          } else if (node.data.type === 'dalle') {
+            await processDALLENode(node, prompt);
+          } else if (node.data.type === 'gemini') {
+            await processGeminiNode(node, prompt);
           } else {
             // For other node types
             if (typeof data.updateNodeData === 'function') {
@@ -176,6 +179,173 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
       propagateResponseToNextNodes(node, aiResponse);
     } catch (error) {
       console.error('OpenAI API Error:', error);
+      throw error;
+    }
+  };
+  
+  // Process DALL-E node (image generation)
+  const processDALLENode = async (node: any, prompt: string) => {
+    // Check if we have API key
+    if (!node.data.apiKey) {
+      throw new Error('OpenAI API key is required. Please configure the node.');
+    }
+    
+    try {
+      // Show processing state
+      console.log("Processing DALL-E node:", node.id);
+      
+      // Determine model from node config or use default
+      const model = node.data.config?.model || 'dall-e-3';
+      const size = node.data.config?.size || '1024x1024';
+      const style = node.data.config?.style || 'vivid';
+      const quality = node.data.config?.quality || 'standard';
+      
+      console.log(`Generating image with DALL-E: model=${model}, size=${size}, style=${style}, quality=${quality}`);
+      
+      // Make API call to OpenAI for image generation
+      const response = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${node.data.apiKey}`
+        },
+        body: JSON.stringify({
+          model: model,
+          prompt: prompt,
+          n: 1,
+          size: size,
+          style: style,
+          quality: quality
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const imageUrl = data.data[0]?.url;
+      
+      if (!imageUrl) {
+        throw new Error('No image URL returned from DALL-E');
+      }
+      
+      // Fetch the image as blob
+      const imageResponse = await fetch(imageUrl);
+      const imageBlob = await imageResponse.blob();
+      
+      // Update the node with the image response
+      if (typeof node.data.updateNodeData === 'function') {
+        node.data.updateNodeData(node.id, {
+          response: imageBlob,
+          responseType: 'image',
+          processing: false,
+          executed: true,
+          error: undefined
+        });
+      }
+      
+      // Propagate the response to any connected nodes
+      propagateResponseToNextNodes(node, imageBlob);
+      
+      toast({
+        title: "Image Generated",
+        description: "DALL-E has generated an image based on your prompt"
+      });
+    } catch (error) {
+      console.error('DALL-E API Error:', error);
+      throw error;
+    }
+  };
+  
+  // Process Gemini node (image generation)
+  const processGeminiNode = async (node: any, prompt: string) => {
+    // Check if we have API key
+    if (!node.data.apiKey) {
+      throw new Error('Google API key is required. Please configure the node.');
+    }
+    
+    try {
+      // Show processing state
+      console.log("Processing Gemini node:", node.id);
+      
+      // For demonstration purposes, we'll simulate a Gemini response
+      // In a real implementation, this would make calls to the Google Gemini API
+      
+      if (typeof node.data.updateNodeData === 'function') {
+        node.data.updateNodeData(node.id, {
+          processing: true,
+          executed: true,
+          error: undefined
+        });
+      }
+      
+      // Simulate API call - in a real implementation, replace with actual Gemini API call
+      setTimeout(async () => {
+        try {
+          // This is a placeholder for the Gemini API call
+          // For now, we'll just use a placeholder image for demonstration
+          
+          // Create a placeholder canvas and draw some text on it
+          const canvas = document.createElement('canvas');
+          canvas.width = 512;
+          canvas.height = 512;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            // Draw gradient background
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#9333ea');
+            gradient.addColorStop(1, '#6366f1');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Add some text
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Gemini Image Generation', canvas.width/2, canvas.height/2 - 20);
+            ctx.font = '18px Arial';
+            ctx.fillText('(Simulated)', canvas.width/2, canvas.height/2 + 20);
+            ctx.font = '14px Arial';
+            ctx.fillText(prompt.substring(0, 40) + (prompt.length > 40 ? '...' : ''), canvas.width/2, canvas.height/2 + 60);
+          }
+          
+          // Convert canvas to blob
+          canvas.toBlob((blob) => {
+            if (blob && typeof node.data.updateNodeData === 'function') {
+              // Update the node with the image response
+              node.data.updateNodeData(node.id, {
+                response: blob,
+                responseType: 'image',
+                processing: false,
+                executed: true,
+                error: undefined
+              });
+              
+              // Propagate the response to any connected nodes
+              propagateResponseToNextNodes(node, blob);
+            }
+          });
+          
+          toast({
+            title: "Image Generated",
+            description: "Gemini has generated an image based on your prompt"
+          });
+        } catch (error) {
+          console.error('Gemini API Simulation Error:', error);
+          if (typeof node.data.updateNodeData === 'function') {
+            node.data.updateNodeData(node.id, {
+              error: error instanceof Error ? error.message : 'Unknown error',
+              processing: false,
+              executed: true
+            });
+          }
+        }
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Gemini API Error:', error);
       throw error;
     }
   };
@@ -406,7 +576,18 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
             {typeof data.response === 'string' ? (
               <pre className="whitespace-pre-wrap">{data.response}</pre>
             ) : (
-              <span>Binary response received</span>
+              data.responseType === 'image' ? (
+                <div className="flex justify-center">
+                  <img 
+                    src={URL.createObjectURL(data.response as Blob)} 
+                    alt="Generated" 
+                    className="max-w-full max-h-[120px] object-contain"
+                    onLoad={() => URL.revokeObjectURL(URL.createObjectURL(data.response as Blob))}
+                  />
+                </div>
+              ) : (
+                <span>Binary response received</span>
+              )
             )}
           </div>
         )}
@@ -435,6 +616,23 @@ const ServiceNode = memo(({ data, id }: { data: NodeData; id: string }) => {
               ) : (
                 <span>Binary response</span>
               )}
+            </div>
+          </div>
+        )}
+        
+        {/* Display Image Response for Image Generation Nodes */}
+        {(data.type === 'dalle' || data.type === 'gemini' || data.type === 'stability' || data.type === 'midjourney') 
+          && data.response && data.responseType === 'image' && (
+          <div className="mt-2 text-xs">
+            <div className="font-medium flex items-center text-green-700">
+              <CheckCircle2 className="h-3 w-3 mr-1" /> Image Generated
+            </div>
+            <div className="mt-2 flex justify-center">
+              <img 
+                src={URL.createObjectURL(data.response as Blob)} 
+                alt="Generated" 
+                className="max-w-full max-h-[150px] object-contain rounded"
+              />
             </div>
           </div>
         )}

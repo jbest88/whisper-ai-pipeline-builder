@@ -25,6 +25,8 @@ export const getNodeIcon = (type: string) => {
     // Image nodes
     case 'dalle':
       return <FaImage />;
+    case 'gemini':
+      return <FaImage />;
     case 'stability':
       return <FaImage />;
     case 'midjourney':
@@ -102,7 +104,11 @@ export const getNodeColor = (type: string): string => {
       
     // Image nodes
     case 'dalle':
+      return '#be123c'; // rose-700
+    case 'gemini':
+      return '#9333ea'; // purple-600
     case 'stability':
+      return '#be123c'; // rose-700
     case 'midjourney':
       return '#be123c'; // rose-700
       
@@ -173,7 +179,9 @@ export const getNodeDescription = (type: string): string => {
       
     // Image nodes
     case 'dalle':
-      return 'Generate images from text';
+      return 'Generate images with DALL-E';
+    case 'gemini':
+      return 'Generate images with Google Gemini';
     case 'stability':
       return 'Create detailed AI images';
     case 'midjourney':

@@ -32,6 +32,7 @@ export interface NodeData {
     voice?: string;
     size?: string;
     style?: string;
+    quality?: string;
     duration?: string;
     resolution?: string;
     frames?: string;

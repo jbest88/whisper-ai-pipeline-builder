@@ -93,7 +93,8 @@ const nodesByCategory: Record<string, Node[]> = {
     { type: 'whisper', name: 'Whisper', description: 'Convert audio to text with high accuracy' },
   ],
   'image-generation': [
-    { type: 'dalle', name: 'DALL-E', description: 'Generate images from text descriptions' },
+    { type: 'dalle', name: 'DALL-E', description: 'Generate images with DALL-E models' },
+    { type: 'gemini', name: 'Gemini', description: 'Generate images with Google Gemini' },
     { type: 'stability', name: 'Stable Diffusion', description: 'Advanced text to image generation' },
     { type: 'midjourney', name: 'Midjourney', description: 'Artistic image creation from prompts' }
   ],

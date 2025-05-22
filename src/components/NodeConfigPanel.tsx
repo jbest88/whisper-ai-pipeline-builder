@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -47,8 +46,17 @@ const NodeConfigPanel = ({ node, onClose, setApiKey }: NodeConfigPanelProps) => 
         break;
       case 'dalle':
         setNodeConfig({
+          model: 'dall-e-3',
           size: '1024x1024',
-          style: 'vivid'
+          style: 'vivid',
+          quality: 'standard'
+        });
+        break;
+      case 'gemini':
+        setNodeConfig({
+          model: 'gemini-pro-vision',
+          size: '1024x1024',
+          style: 'natural'
         });
         break;
       case 'sora':
@@ -89,7 +97,7 @@ const NodeConfigPanel = ({ node, onClose, setApiKey }: NodeConfigPanelProps) => 
     }
     
     // Also update the global API key if it's an OpenAI node
-    if (apiKeyInput && (node.data.type === 'openai' || node.data.type === 'sora')) {
+    if (apiKeyInput && (node.data.type === 'openai' || node.data.type === 'sora' || node.data.type === 'dalle')) {
       setApiKey(apiKeyInput);
       toast({
         title: "API Key Saved",
@@ -108,7 +116,10 @@ const NodeConfigPanel = ({ node, onClose, setApiKey }: NodeConfigPanelProps) => 
   const getAPIKeyLabel = () => {
     switch (node.data.type) {
       case 'openai':
+      case 'dalle':
         return 'OpenAI API Key';
+      case 'gemini':
+        return 'Google API Key';
       case 'anthropic':
         return 'Anthropic API Key';
       case 'elevenlabs':
@@ -130,15 +141,17 @@ const NodeConfigPanel = ({ node, onClose, setApiKey }: NodeConfigPanelProps) => 
   const getAPIKeyCreationURL = () => {
     switch (node.data.type) {
       case 'openai':
+      case 'dalle':
+      case 'sora':
         return 'https://platform.openai.com/api-keys';
+      case 'gemini':
+        return 'https://ai.google.dev/tutorials/setup';
       case 'anthropic':
         return 'https://console.anthropic.com/settings/keys';
       case 'elevenlabs':
         return 'https://elevenlabs.io/subscription';
       case 'stability':
         return 'https://platform.stability.ai/account/keys';
-      case 'sora':
-        return 'https://platform.openai.com/api-keys';
       case 'runway':
         return 'https://runwayml.com/account/api-keys/';
       case 'pika':
@@ -186,28 +199,21 @@ const NodeConfigPanel = ({ node, onClose, setApiKey }: NodeConfigPanelProps) => 
           </>
         );
       
-      case 'elevenlabs':
-        return (
-          <>
-            <div className="space-y-2 mb-4">
-              <Label htmlFor="voice">Voice</Label>
-              <select 
-                id="voice"
-                className="w-full border rounded p-2 text-sm"
-                value={nodeConfig.voice}
-                onChange={(e) => setNodeConfig({...nodeConfig, voice: e.target.value})}
-              >
-                <option value="Rachel">Rachel</option>
-                <option value="Thomas">Thomas</option>
-                <option value="Emily">Emily</option>
-              </select>
-            </div>
-          </>
-        );
-      
       case 'dalle':
         return (
           <>
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="model">Model</Label>
+              <select 
+                id="model"
+                className="w-full border rounded p-2 text-sm"
+                value={nodeConfig.model}
+                onChange={(e) => setNodeConfig({...nodeConfig, model: e.target.value})}
+              >
+                <option value="dall-e-3">DALL-E 3</option>
+                <option value="dall-e-2">DALL-E 2</option>
+              </select>
+            </div>
             <div className="space-y-2 mb-4">
               <Label htmlFor="size">Image Size</Label>
               <select 
@@ -231,6 +237,81 @@ const NodeConfigPanel = ({ node, onClose, setApiKey }: NodeConfigPanelProps) => 
               >
                 <option value="vivid">Vivid</option>
                 <option value="natural">Natural</option>
+              </select>
+            </div>
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="quality">Quality</Label>
+              <select 
+                id="quality"
+                className="w-full border rounded p-2 text-sm"
+                value={nodeConfig.quality}
+                onChange={(e) => setNodeConfig({...nodeConfig, quality: e.target.value})}
+              >
+                <option value="standard">Standard</option>
+                <option value="hd">HD</option>
+              </select>
+            </div>
+          </>
+        );
+      
+      case 'gemini':
+        return (
+          <>
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="model">Model</Label>
+              <select 
+                id="model"
+                className="w-full border rounded p-2 text-sm"
+                value={nodeConfig.model}
+                onChange={(e) => setNodeConfig({...nodeConfig, model: e.target.value})}
+              >
+                <option value="gemini-pro-vision">Gemini Pro Vision</option>
+                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+              </select>
+            </div>
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="style">Style</Label>
+              <select 
+                id="style"
+                className="w-full border rounded p-2 text-sm"
+                value={nodeConfig.style}
+                onChange={(e) => setNodeConfig({...nodeConfig, style: e.target.value})}
+              >
+                <option value="natural">Natural</option>
+                <option value="vivid">Vivid</option>
+                <option value="artistic">Artistic</option>
+              </select>
+            </div>
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="temp">Temperature: {nodeConfig.temperature || 0.7}</Label>
+              <input 
+                id="temp"
+                type="range" 
+                min="0" 
+                max="1" 
+                step="0.1"
+                value={nodeConfig.temperature || 0.7}
+                onChange={(e) => setNodeConfig({...nodeConfig, temperature: parseFloat(e.target.value)})}
+                className="w-full"
+              />
+            </div>
+          </>
+        );
+        
+      case 'elevenlabs':
+        return (
+          <>
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="voice">Voice</Label>
+              <select 
+                id="voice"
+                className="w-full border rounded p-2 text-sm"
+                value={nodeConfig.voice}
+                onChange={(e) => setNodeConfig({...nodeConfig, voice: e.target.value})}
+              >
+                <option value="Rachel">Rachel</option>
+                <option value="Thomas">Thomas</option>
+                <option value="Emily">Emily</option>
               </select>
             </div>
           </>
