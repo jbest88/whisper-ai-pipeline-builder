@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { AINode, WorkflowExecution, ExecutionStatus } from '../types/workflow';
 import { loadFromStorage, saveToStorage, removeFromStorage } from '../utils/storageUtils';
 import { Calendar, Download, Play, Save, Trash, Check, AlertCircle } from 'lucide-react';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 const Dashboard = () => {
   const [selectedNode, setSelectedNode] = useState<AINode | null>(null);
@@ -151,79 +152,81 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="flex h-screen bg-slate-100">
-      <Sidebar />
-      
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-6 py-3 flex justify-between items-center">
-          <div className="flex items-center">
-            <input 
-              type="text"
-              value={workflowName}
-              onChange={handleNameChange}
-              className="text-xl font-semibold text-gray-800 border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1"
-            />
-            <div className="flex items-center ml-3 text-xs text-gray-500">
-              <Calendar className="h-3.5 w-3.5 mr-1" />
-              <span>Last edited: {new Date().toLocaleDateString()}</span>
-            </div>
-          </div>
-          
-          <div className="flex space-x-2">
-            {latestExecution && (
-              <div className={`flex items-center px-3 py-1 rounded-full text-xs ${
-                latestExecution.status === ExecutionStatus.COMPLETED ? 'bg-green-100 text-green-800' : 
-                latestExecution.status === ExecutionStatus.ERROR ? 'bg-red-100 text-red-800' : 
-                'bg-blue-100 text-blue-800'
-              }`}>
-                {latestExecution.status === ExecutionStatus.COMPLETED ? (
-                  <Check className="h-3.5 w-3.5 mr-1" />
-                ) : latestExecution.status === ExecutionStatus.ERROR ? (
-                  <AlertCircle className="h-3.5 w-3.5 mr-1" />
-                ) : (
-                  <span className="h-2.5 w-2.5 rounded-full bg-blue-500 mr-1.5 animate-pulse"></span>
-                )}
-                {latestExecution.status === ExecutionStatus.RUNNING ? 'Running...' : 
-                 latestExecution.status === ExecutionStatus.COMPLETED ? 'Last run successful' : 
-                 'Execution failed'}
-              </div>
-            )}
-            <Button variant="outline" size="sm" onClick={handleSaveWorkflow}>
-              <Save className="h-4 w-4 mr-1" /> Save
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleExport}>
-              <Download className="h-4 w-4 mr-1" /> Export
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleClearWorkflow} className="text-red-500 hover:text-red-600">
-              <Trash className="h-4 w-4 mr-1" /> Clear
-            </Button>
-            <Button 
-              size="sm"
-              onClick={handleRunWorkflow} 
-              disabled={isWorkflowRunning}
-              className={isWorkflowRunning ? 'animate-pulse' : ''}
-            >
-              <Play className="h-4 w-4 mr-1" />
-              {isWorkflowRunning ? 'Running...' : 'Execute Workflow'}
-            </Button>
-          </div>
-        </header>
+    <SidebarProvider>
+      <div className="flex h-screen bg-slate-100">
+        <Sidebar />
         
-        <div className="flex-1 flex overflow-hidden">
-          <div className="flex-1 relative">
-            <WorkflowCanvas setSelectedNode={setSelectedNode} apiKey={apiKey} setApiKey={setApiKey} />
-          </div>
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <header className="bg-white border-b border-gray-200 px-6 py-3 flex justify-between items-center">
+            <div className="flex items-center">
+              <input 
+                type="text"
+                value={workflowName}
+                onChange={handleNameChange}
+                className="text-xl font-semibold text-gray-800 border-none focus:outline-none focus:ring-1 focus:ring-primary rounded px-2 py-1"
+              />
+              <div className="flex items-center ml-3 text-xs text-gray-500">
+                <Calendar className="h-3.5 w-3.5 mr-1" />
+                <span>Last edited: {new Date().toLocaleDateString()}</span>
+              </div>
+            </div>
+            
+            <div className="flex space-x-2">
+              {latestExecution && (
+                <div className={`flex items-center px-3 py-1 rounded-full text-xs ${
+                  latestExecution.status === ExecutionStatus.COMPLETED ? 'bg-green-100 text-green-800' : 
+                  latestExecution.status === ExecutionStatus.ERROR ? 'bg-red-100 text-red-800' : 
+                  'bg-blue-100 text-blue-800'
+                }`}>
+                  {latestExecution.status === ExecutionStatus.COMPLETED ? (
+                    <Check className="h-3.5 w-3.5 mr-1" />
+                  ) : latestExecution.status === ExecutionStatus.ERROR ? (
+                    <AlertCircle className="h-3.5 w-3.5 mr-1" />
+                  ) : (
+                    <span className="h-2.5 w-2.5 rounded-full bg-blue-500 mr-1.5 animate-pulse"></span>
+                  )}
+                  {latestExecution.status === ExecutionStatus.RUNNING ? 'Running...' : 
+                  latestExecution.status === ExecutionStatus.COMPLETED ? 'Last run successful' : 
+                  'Execution failed'}
+                </div>
+              )}
+              <Button variant="outline" size="sm" onClick={handleSaveWorkflow}>
+                <Save className="h-4 w-4 mr-1" /> Save
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExport}>
+                <Download className="h-4 w-4 mr-1" /> Export
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleClearWorkflow} className="text-red-500 hover:text-red-600">
+                <Trash className="h-4 w-4 mr-1" /> Clear
+              </Button>
+              <Button 
+                size="sm"
+                onClick={handleRunWorkflow} 
+                disabled={isWorkflowRunning}
+                className={isWorkflowRunning ? 'animate-pulse' : ''}
+              >
+                <Play className="h-4 w-4 mr-1" />
+                {isWorkflowRunning ? 'Running...' : 'Execute Workflow'}
+              </Button>
+            </div>
+          </header>
           
-          {selectedNode && (
-            <NodeConfigPanel 
-              node={selectedNode} 
-              setApiKey={setApiKey}
-              onClose={() => setSelectedNode(null)} 
-            />
-          )}
+          <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 relative">
+              <WorkflowCanvas setSelectedNode={setSelectedNode} apiKey={apiKey} setApiKey={setApiKey} />
+            </div>
+            
+            {selectedNode && (
+              <NodeConfigPanel 
+                node={selectedNode} 
+                setApiKey={setApiKey}
+                onClose={() => setSelectedNode(null)} 
+              />
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 
